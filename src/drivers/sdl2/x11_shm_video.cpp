@@ -60,8 +60,8 @@ bool x11_shm_video::init_video(int width, int height) {
 
     // Verify window is visible
     Window root2, child;
-    int rx, ry, wx, wy;
-    unsigned int bw2, dep2;
+    int rx = 0, ry = 0;
+    unsigned int wx = 0, wy = 0, bw2 = 0, dep2 = 0;
     if (XGetGeometry(display, window, &root2, &rx, &ry, &wx, &wy, &bw2, &dep2)) {
         std::cerr << "x11_shm: window geom: pos=(" << rx << "," << ry << ") size=" << wx << "x" << wy << " depth=" << dep2 << "\n";
     }
