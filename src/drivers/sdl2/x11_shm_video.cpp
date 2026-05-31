@@ -59,11 +59,11 @@ bool x11_shm_video::init_video(int width, int height) {
     XSync(display, False);
 
     // Verify window is visible
-    Window root, child;
+    Window root2, child;
     int rx, ry, wx, wy;
-    unsigned int bw, depth;
-    if (XGetGeometry(display, window, &root, &rx, &ry, &wx, &wy, &bw, &depth)) {
-        std::cerr << "x11_shm: window geom: pos=(" << rx << "," << ry << ") size=" << wx << "x" << wy << " depth=" << depth << "\n";
+    unsigned int bw2, dep2;
+    if (XGetGeometry(display, window, &root2, &rx, &ry, &wx, &wy, &bw2, &dep2)) {
+        std::cerr << "x11_shm: window geom: pos=(" << rx << "," << ry << ") size=" << wx << "x" << wy << " depth=" << dep2 << "\n";
     }
 
     if (!XShmQueryExtension(display)) {
