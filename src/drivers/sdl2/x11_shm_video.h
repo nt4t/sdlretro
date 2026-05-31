@@ -3,12 +3,7 @@
 #include "video_base.h"
 
 #include <cstdint>
-
-extern "C" {
-typedef struct _Display Display;
-typedef struct _XImage XImage;
-typedef struct _ShmSeg ShmSeg;
-}
+#include <X11/Xlib.h>
 
 namespace drivers {
 
