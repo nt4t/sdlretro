@@ -76,7 +76,7 @@ bool x11_shm_video::init_video(int width, int height) {
     std::cerr << "x11_shm: XShmQueryExtension OK\n";
 
     shm_image = XShmCreateImage(display, visual, depth, ZPixmap,
-        nullptr, nullptr, width * 4, 32);
+        nullptr, nullptr, width, height);
     if (!shm_image) {
         fprintf(stderr, "x11_shm: XShmCreateImage failed\n");
         XDestroyWindow(display, window);
@@ -220,7 +220,7 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
         int depth = DefaultDepth(display, screen);
 
         shm_image = XShmCreateImage(display, visual, depth, ZPixmap,
-            nullptr, nullptr, width * 4, 32);
+            nullptr, nullptr, width, height);
         if (!shm_image) {
             std::cerr << "x11_shm: XShmCreateImage failed for " << width << "x" << height << "\n";
             return false;
