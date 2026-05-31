@@ -30,6 +30,7 @@ Add X11 Shared Memory (XShm) video rendering backend for sdlretro on Linux/X11 s
 - Simplified `game_resolution_changed`: keep initial 640x480 shm_image, don't recreate
 - Fixed `XShmCreateImage` to use `&shm_info` parameter so X server can verify shared memory
 - Added Alt+Enter fullscreen toggle to SDL1 backend
+- Added FPS counter toggleable with F3 key (uses built-in pixel font)
 
 ### In Progress
 - Phase 4: Testing & Verification — XShmPutImage still returns 0 after fixing `XShmCreateImage` to use `&shm_info`

@@ -34,6 +34,9 @@ public:
 
     inline void set_force_scale(uint32_t s) { force_scale = s; }
 
+    inline void set_fps_enabled(bool enabled) { fps_enabled = enabled; }
+    inline bool get_fps_enabled() const { return fps_enabled; }
+
 private:
     void draw_text_pixel(int x, int y, const char *text, int width, bool shadow);
 

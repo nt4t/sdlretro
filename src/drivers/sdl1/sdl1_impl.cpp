@@ -50,8 +50,8 @@ bool sdl1_impl::process_events() {
                     break;
                 }
                 if (event.key.keysym.sym == SDLK_F3) {
-                    static_cast<sdl1_video*>(video.get())->fps_enabled =
-                        !static_cast<sdl1_video*>(video.get())->fps_enabled;
+                    auto *v = static_cast<sdl1_video*>(video.get());
+                    v->set_fps_enabled(!v->get_fps_enabled());
                     break;
                 }
             }
