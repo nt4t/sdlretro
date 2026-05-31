@@ -6,6 +6,10 @@
 #include "throttle.h"
 #include "logger.h"
 
+#ifdef SDLRETRO_X11_SHM
+#include "x11_shm_video.h"
+#endif
+
 #include <SDL.h>
 
 namespace drivers {
@@ -14,7 +18,18 @@ sdl2_impl::sdl2_impl() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         return;
     }
+
+#ifdef SDLRETRO_X11_SHM
+    auto x11_video = std::make_shared<x11_shm_video>();
+    if (x11_video->init_video(640, 480)) {
+        video = x11_video;
+    } else {
+        video = std::make_shared<sdl2_video>();
+    }
+#else
     video = std::make_shared<sdl2_video>();
+#endif
+
     input = std::make_shared<sdl2_input>();
     input->post_init();
 }
