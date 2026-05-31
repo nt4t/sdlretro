@@ -6,6 +6,8 @@
 
 #include "helper.h"
 
+#include "logger.h"
+
 #include <SDL.h>
 
 namespace drivers {
@@ -29,9 +31,11 @@ sdl1_video::sdl1_video() {
     ttf[0] = std::make_shared<sdl1_ttf>();
     ttf[0]->init(16, 0);
     ttf[0]->add(g_cfg.get_data_dir() + PATH_SEPARATOR_CHAR + "fonts" + PATH_SEPARATOR_CHAR + "regular.ttf", 0);
+    LOG(INFO, "SDL1 font[0] loaded: %s", ttf[0]->is_valid() ? "yes" : "no");
     ttf[1] = std::make_shared<sdl1_ttf>();
     ttf[1]->init(16, 0);
     ttf[1]->add(g_cfg.get_data_dir() + PATH_SEPARATOR_CHAR + "fonts" + PATH_SEPARATOR_CHAR + "bold.ttf", 0);
+    LOG(INFO, "SDL1 font[1] loaded: %s", ttf[1]->is_valid() ? "yes" : "no");
 }
 
 sdl1_video::~sdl1_video() {
@@ -224,6 +228,7 @@ void sdl1_video::fill_rectangle(int x, int y, int w, int h) {
 }
 
 void sdl1_video::draw_text(int x, int y, const char *text, int width, bool shadow) {
+    LOG(INFO, "draw_text: ttf_valid=%d, text='%s'", ttf[0] ? 1 : 0, text);
     if (ttf[0]) {
         ttf[0]->render(screen, x, y, text, width, shadow);
     } else {

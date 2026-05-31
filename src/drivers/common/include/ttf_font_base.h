@@ -49,6 +49,7 @@ public:
     void get_char_width_and_height(uint16_t ch, uint8_t &width, int8_t &t, int8_t &b);
 
     inline int get_font_size() const { return font_size; }
+    inline bool is_valid() const { return !fonts.empty(); }
 
 private:
     void new_rect_pack();
