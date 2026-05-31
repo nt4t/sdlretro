@@ -53,7 +53,7 @@ struct retro_vfs_file_handle *RETRO_CALLCONV unix_vfs_open(const char *path, uns
             flag |= O_RDWR;
         }
     }
-    ret->file_handle = open(path, flag);
+    ret->file_handle = open(path, flag, 0644);
     if (ret->file_handle < 0) {
         delete ret;
         return nullptr;
