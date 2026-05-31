@@ -1,164 +1,75 @@
-# sdlretro
+## Goal
+Add X11 Shared Memory (XShm) video rendering backend for sdlretro on Linux/X11 systems, with OpenGL fallback.
 
-A lightweight libretro frontend written in C++ for SDL, optimized for retro handheld devices like GCW-Zero and RG-350.
+## Constraints & Preferences
+- Linux/X11 only, no Wayland/macOS/Windows support
+- XRGB8888 pixel format only
+- Configurable via build option `SDLRETRO_X11_SHM` (default OFF)
+- Full GUI overlay support via X11 primitives
+- Minimal viable: no integer scaling, no custom shaders
+- Bitmap font fallback (no FreeType)
+- Synchronous rendering (XShmPutImage blocks)
+- Clean separation: new x11_shm_video.cpp/h, not modifying existing sdl2_video
 
-## Overview
+## Progress
+### Done
+- Created design spec: `docs/superpowers/specs/2026-05-31-x11-shm-video-design.md`
+- Added `SDLRETRO_X11_SHM` CMake option with X11/XShm dependency detection
+- Created `src/drivers/sdl2/x11_shm_video.h` — header with video_base interface
+- Created `src/drivers/sdl2/x11_shm_video.cpp` — full X11 Shm implementation
+- Modified `src/drivers/sdl2/sdl2_impl.cpp` — conditional backend selection (X11 Shm → OpenGL fallback)
+- Fixed CMake detection for CMake 3.10+ new FindX11 (X11_XSHM_FOUND → X11_Xext_FOUND)
+- Added SDLRETRO_X11_SHM compile definition to driver_sdl2 target (was only on sdlretro target)
+- Added X11/XShm headers to header file (`<X11/Xlib.h>`, `<X11/extensions/XShm.h>`)
+- Fixed `ShmSeg` type: replaced cast with proper `XShmSegmentInfo` struct
+- Added `game_max_width`/`game_max_height` members to class
+- Added X11 event processing (`process_x11_events`) with key/mouse callback mechanism
+- Added window title via `XStoreName`
+- Fixed `XEvent.button` → `XEvent.xbutton.button`
+- Fixed `XShmCreateImage` width/height params: was `width*4, 32`, now `width, height`
+- Simplified `game_resolution_changed`: keep initial 640x480 shm_image, don't recreate
+- Fixed `XShmCreateImage` to use `&shm_info` parameter so X server can verify shared memory
+- Added Alt+Enter fullscreen toggle to SDL1 backend
 
-sdlretro loads libretro cores dynamically and provides a simple, easy-to-maintain frontend with SDL-based rendering, audio, and input. It targets resource-constrained platforms while remaining functional on desktop systems.
+### In Progress
+- Phase 4: Testing & Verification — XShmPutImage still returns 0 after fixing `XShmCreateImage` to use `&shm_info`
 
-**Version:** 0.1.0  
-**Languages:** C11, C++17  
-**License:** See [LICENSE](LICENSE)
+### Blocked
+- None
 
-## Features
+## Key Decisions
+- Approach A: Separate X11 Shm video backend (clean separation from OpenGL)
+- Build option `SDLRETRO_X11_SHM` default OFF, requires X11/XShm libraries
+- Fallback chain: X11 Shm → OpenGL if XShm unavailable or on non-Linux
+- XRGB8888 only format, bitmap font fallback, no integer scaling
+- X11 window management (not SDL window) when X11 Shm enabled
+- Reuse initial 640x480 shm_image instead of reallocating on resolution change
+- `XShmCreateImage` now uses `&shm_info` so X server can verify shared memory
 
-- Dynamic loading of libretro cores (`.so`/`.dll`)
-- Core selection menu when multiple cores support the same ROM extension
-- ZIP ROM support (up to 2 files: one ROM + one dir/readme)
-- In-game menu (F1) with Global Settings, Core Settings, Input Settings, Language, Reset, and Exit
-- Configuration via JSON config file
-- Internationalization (English, Chinese Simplified)
-- Audio resampling with libsamplerate
-- SRAM/RTC save management
-- OpenGL rendering (SDL2) or software rendering (SDL1)
-- X11 Shared Memory rendering (Linux/X11, opt-in)
+## Next Steps
+1. Rebuild and test with `&shm_info` fix
+2. Verify XShmPutImage succeeds
+3. Verify keyboard input via X11 event processing
+4. If still failing, investigate XShmPutImage error codes or try XPutImage fallback
 
-## Build
+## Critical Context
+- sdlretro architecture: `video_base` abstract interface, SDL2 backend uses OpenGL (sdl2_video.cpp)
+- XShm API: `XShmQueryExtension`, `XShmCreateImage`, `XShmPutImage`, `shmget`/`shmat`/`shmdt`/`shmctl`
+- X11 drawing primitives: `XSetForeground`, `XFillRectangle`, `XDrawString`
+- XShmPutImage consistently returns 0 (failure) — fixed by passing `&shm_info` to `XShmCreateImage`
+- Debug shows: shm_image=256x224, bpp=32, bpl=1024, shm_avail=1, shmid valid
+- Simplified approach: keep initial 640x480 shm_image, render game at top-left corner
+- Build files modified: `src/CMakeLists.txt`, `src/drivers/sdl2/CMakeLists.txt`, `src/drivers/sdl2/sdl2_impl.cpp`
 
-### Requirements
-
-- CMake 3.0+
-- SDL 1.2 or SDL2
-- FreeType (default on Linux/macOS) or stb_truetype (default on Windows)
-- libcurl (optional, for core downloader on non-Windows)
-
-### Desktop (Linux/macOS/Windows)
-
-```bash
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DSDLRETRO_FRONTEND=SDL2 ..
-make
-```
-
-### GCW-Zero / RG350
-
-```bash
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DMODEL=gcw0 ..
-make
-./make_opk.sh          # Lite version
-FULL=1 ./make_opk.sh   # Full version (with cores)
-```
-
-### Build Options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `SDLRETRO_FRONTEND` | SDL2 (SDL1 on OpenDingux) | SDL driver version |
-| `SDLRETRO_USE_STB_TRUETYPE` | ON on Windows, OFF on Linux/macOS | Use stb_truetype instead of FreeType |
-| `SDLRETRO_CORE_DOWNLOADER` | ON (OFF on Windows) | Enable libretro core downloader (requires libcurl) |
-| `SDLRETRO_USE_STATIC_CRT` | ON on Windows, OFF on Linux | Static C runtime linking |
-
-## Running
-
-```bash
-# Auto-detect core from ROM extension
-./sdlretro rom.gb
-
-# Specify core explicitly
-./sdlretro -L mupen64plus_libretro.so rom.n64
-```
-
-### Configuration
-
-Config file: `~/.sdlretro/cfg/sdlretro.json` (or `./cfg/sdlretro.json` on Windows)
-
-```json
-{
-    "res_w": 1280,
-    "res_h": 720,
-    "scale": 2,
-    "fullscreen": false,
-    "integer_scaling": false,
-    "linear": true,
-    "mono_audio": false,
-    "sample_rate": 0,
-    "resampler_quality": 0,
-    "scaling_mode": 0,
-    "save_check": 0,
-    "language": 0
-}
-```
-
-### Key Bindings (SDL2, non-GCW)
-
-| Button | Key |
-|--------|-----|
-| A | L |
-| B | K |
-| X | I |
-| Y | J |
-| SELECT (menu) | F1 |
-| START | V |
-| L | Q |
-| R | E |
-| L2 | 1 |
-| R2 | 3 |
-| L3 | Z |
-| R3 | X |
-| D-Pad / Analog | W A S D |
-
-## Architecture
-
-```
-main.cpp
-   └── gui::ui_host ──> gui::sdl_menu ──> gui::sdl_elem
-         │
-         └── drivers::driver_base ──> driver_common (audio/video/input/font/throttle)
-                    │
-                    └── src/libretro/ (core, cfg, variables, helper, i18n, downloader, vfs)
-                               │
-                               └── external/ (fmt, json, glad, miniz, stb, libsamplerate, xxhash, cpuid)
-```
-
-### Directory Structure
-
-| Directory | Purpose |
-|-----------|---------|
-| `src/` | Main source code |
-| `src/main.cpp` | Entry point, CLI args, emulation loop |
-| `src/drivers/` | Platform drivers (SDL1/SDL2) for audio, video, input, font |
-| `src/gui/` | Menu system with element types (static, boolean, values, input) |
-| `src/libretro/` | Core loading, config, variables, I18n, VFS, downloader |
-| `src/util/` | Structured logging (fmt-powered) |
-| `external/` | Third-party dependencies (git submodules) |
-| `lang/` | Internationalization files (en-US.json, zh-CN.json) |
-| `data/` | Application resources (icon) |
-| `opk/` | GCW-Zero packaging scripts |
-| `cmake/` | Cross-compilation toolchain files |
-
-## Dependencies
-
-| Library | Purpose |
-|---------|---------|
-| [fmt](https://github.com/fmtlib/fmt) | Fast C++ formatting |
-| [nlohmann/json](https://github.com/nlohmann/json) | JSON parsing/serialization |
-| [glad](https://github.com/Dav1dde/glad) | OpenGL loader |
-| [miniz](https://github.com/richgel999/miniz) | ZIP/TAR compression |
-| [stb](https://github.com/nothings/stb) | Single-file image/font libraries |
-| [libsamplerate](https://github.com/erikd/libsamplerate) | Audio sample rate conversion |
-| [xxHash](https://github.com/Cyan4973/xxHash) | Fast hash function |
-| [cpuid](https://github.com/steinwurf/cpuid) | CPU feature detection |
-
-## Credits
-
-- [libretro](https://github.com/libretro/libretro-common)
-- [JSON for Modern C++](https://github.com/nlohmann/json)
-- [miniz](https://github.com/richgel999/miniz)
-- [stb](https://github.com/nothings/stb)
-- [glad](https://github.com/Dav1dde/glad)
-- [libsamplerate](https://github.com/erikd/libsamplerate)
-- [xxHash](https://github.com/Cyan4973/xxHash)
-- [cpuid](https://github.com/steinwurf/cpuid)
-- [wingetopt](https://github.com/alex85k/wingetopt)
-- [fmtlib](https://github.com/fmtlib/fmt)
+## Relevant Files
+- `docs/superpowers/specs/2026-05-31-x11-shm-video-design.md`: Design spec for X11 Shm backend
+- `src/drivers/sdl2/x11_shm_video.h`: New header with x11_shm_video class declaration
+- `src/drivers/sdl2/x11_shm_video.cpp`: New X11 Shm implementation (~300 lines)
+- `src/drivers/sdl2/sdl2_impl.cpp`: Modified for conditional X11 vs OpenGL backend selection
+- `src/CMakeLists.txt`: Added SDLRETRO_X11_SHM option and X11 dependency detection
+- `src/drivers/sdl2/CMakeLists.txt`: Added x11_shm_video.cpp/h to sources
+- `src/drivers/sdl1/sdl1_impl.cpp`: Added Alt+Enter fullscreen toggle
+- `src/drivers/sdl1/sdl1_video.cpp`: Implemented window_resized for fullscreen
+- `src/drivers/sdl1/sdl1_video.h`: Updated window_resized declaration
+- `src/drivers/common/include/video_base.h`: Abstract video interface (reference)
+- `src/drivers/sdl2/sdl2_video.cpp`: Existing OpenGL backend (reference)

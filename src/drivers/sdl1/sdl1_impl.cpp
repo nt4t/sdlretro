@@ -44,8 +44,9 @@ bool sdl1_impl::process_events() {
                 if (event.key.keysym.sym == SDLK_RETURN &&
                     (event.key.keysym.mod & KMOD_ALT)) {
                     g_cfg.set_fullscreen(!g_cfg.get_fullscreen());
-                    static_cast<sdl1_video*>(video.get())->window_resized(
-                        g_cfg.get_width(), g_cfg.get_height(), g_cfg.get_fullscreen());
+                    int w, h;
+                    g_cfg.get_resolution(w, h);
+                    static_cast<sdl1_video*>(video.get())->window_resized(w, h, g_cfg.get_fullscreen());
                     break;
                 }
             }
