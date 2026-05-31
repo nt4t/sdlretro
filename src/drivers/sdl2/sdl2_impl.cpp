@@ -4,6 +4,7 @@
 #include "sdl2_audio.h"
 #include "sdl2_input.h"
 #include "throttle.h"
+#include "logger.h"
 
 #include <SDL.h>
 
@@ -33,6 +34,7 @@ bool sdl2_impl::process_events() {
             return true;
         case SDL_KEYDOWN:
         case SDL_KEYUP:
+            LOG(TRACE, "KEY {} scancode={}", event.type == SDL_KEYDOWN ? "DOWN" : "UP", SDL_GetScancodeName(event.key.keysym.scancode));
             if (
 #ifdef GCW_ZERO
                 event.key.keysym.scancode == SDL_SCANCODE_HOME
@@ -52,12 +54,14 @@ bool sdl2_impl::process_events() {
             break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
+            LOG(TRACE, "MOUSE {} button={}", event.type == SDL_MOUSEBUTTONDOWN ? "DOWN" : "UP", event.button.button);
             input->on_km_input(event.button.button + 1024, event.type == SDL_MOUSEBUTTONDOWN);
             break;
         case SDL_CONTROLLERBUTTONDOWN:
         case SDL_CONTROLLERBUTTONUP: {
             auto btn = sdl2_input::controller_button_map(event.cbutton.button);
             if (btn.first == 0) break;
+            LOG(TRACE, "CONTROLLER {} button={} mapped={}", event.type == SDL_CONTROLLERBUTTONDOWN ? "DOWN" : "UP", event.cbutton.button, btn.first);
             auto analog_index = btn.first >> 8;
             if (analog_index > 0) {
                 input->on_axis_input(event.cbutton.which, ((analog_index - 1) << 1) + (btn.first & 0xFF), event.type == SDL_CONTROLLERBUTTONDOWN ? (btn.second > 0 ? 0x7FFF : -0x8000) : 0);
@@ -69,6 +73,7 @@ bool sdl2_impl::process_events() {
         case SDL_CONTROLLERAXISMOTION: {
             auto btn = sdl2_input::controller_axis_map(event.caxis.axis, event.caxis.value);
             if (btn.first == 0) break;
+            LOG(TRACE, "CONTROLLER AXIS axis={} value={} mapped={}", event.caxis.axis, event.caxis.value, btn.first);
             auto analog_index = btn.first >> 8;
             if (analog_index > 0) {
                 input->on_axis_input(event.cbutton.which, ((analog_index - 1) << 1) + (btn.first & 0xFF), btn.second);
@@ -78,9 +83,11 @@ bool sdl2_impl::process_events() {
             break;
         }
         case SDL_CONTROLLERDEVICEADDED:
+            LOG(TRACE, "CONTROLLER ADDED device={}", event.cdevice.which);
             input->port_connected(event.cdevice.which);
             break;
         case SDL_CONTROLLERDEVICEREMOVED:
+            LOG(TRACE, "CONTROLLER REMOVED device={}", event.cdevice.which);
             input->port_disconnected(event.cdevice.which);
             break;
         default: break;
