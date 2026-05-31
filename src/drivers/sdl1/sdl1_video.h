@@ -16,7 +16,7 @@ class sdl1_video: public video_base {
 public:
     sdl1_video();
     ~sdl1_video() override;
-    void window_resized(int width, int height, bool fullscreen) {}
+    void window_resized(int width, int height, bool fullscreen) override;
     bool game_resolution_changed(int width, int height, int max_width, int max_height, unsigned pixel_format) override;
     void render(const void *data, int width, int height, size_t pitch) override;
     void frame_render() override;

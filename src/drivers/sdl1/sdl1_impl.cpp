@@ -7,6 +7,7 @@
 #include "throttle.h"
 
 #include <core.h>
+#include <cfg.h>
 
 #include <SDL.h>
 
@@ -39,6 +40,15 @@ bool sdl1_impl::process_events() {
             return true;
         case SDL_KEYDOWN:
         case SDL_KEYUP:
+            if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_RETURN &&
+                    (event.key.keysym.mod & KMOD_ALT)) {
+                    g_cfg.set_fullscreen(!g_cfg.get_fullscreen());
+                    static_cast<sdl1_video*>(video.get())->window_resized(
+                        g_cfg.get_width(), g_cfg.get_height(), g_cfg.get_fullscreen());
+                    break;
+                }
+            }
             if (
 #ifdef GCW_ZERO
                 event.key.keysym.sym == SDLK_HOME

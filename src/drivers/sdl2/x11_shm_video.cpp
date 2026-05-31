@@ -75,8 +75,8 @@ bool x11_shm_video::init_video(int width, int height) {
     }
     std::cerr << "x11_shm: XShmQueryExtension OK\n";
 
-    shm_image = XShmCreateImage(display, visual, depth, ZPixmap,
-        nullptr, nullptr, width, height);
+  shm_image = XShmCreateImage(display, visual, depth, ZPixmap,
+        nullptr, &shm_info, width, height);
     if (!shm_image) {
         fprintf(stderr, "x11_shm: XShmCreateImage failed\n");
         XDestroyWindow(display, window);
@@ -84,47 +84,21 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
-    std::cerr << "x11_shm: XShmCreateImage OK\n";
-
-    int shmid = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
-    if (shmid < 0) {
-        fprintf(stderr, "x11_shm: shmget failed\n");
-        XDestroyImage(shm_image);
-        XDestroyWindow(display, window);
-        XCloseDisplay(display);
-        display = nullptr;
-        return false;
-    }
-    std::cerr << "x11_shm: shmget OK (shmid=" << shmid << ")\n";
-
-    shm_data = (char *)shmat(shmid, nullptr, 0);
-    if (shm_data == (char *)-1) {
-        fprintf(stderr, "x11_shm: shmat failed\n");
-        shmctl(shmid, IPC_RMID, nullptr);
-        XDestroyImage(shm_image);
-        XDestroyWindow(display, window);
-        XCloseDisplay(display);
-        display = nullptr;
-        return false;
-    }
-    std::cerr << "x11_shm: shmat OK\n";
-
-    shm_image->data = shm_data;
-    shm_info.shmid = shmid;
-    shm_info.shmaddr = shm_data;
-    shm_info.readOnly = False;
-    shm_avail = true;
+    shm_data = shm_info.shmaddr;
+    std::cerr << "x11_shm: XShmCreateImage OK (shmid=" << shm_info.shmid
+              << " addr=" << shm_data << ")\n";
 
     if (!XShmAttach(display, &shm_info)) {
         fprintf(stderr, "x11_shm: XShmAttach failed\n");
         shmdt(shm_data);
-        shmctl(shmid, IPC_RMID, nullptr);
+        shmctl(shm_info.shmid, IPC_RMID, nullptr);
         XDestroyImage(shm_image);
         XDestroyWindow(display, window);
         XCloseDisplay(display);
         display = nullptr;
         return false;
     }
+    shm_avail = true;
     std::cerr << "x11_shm: XShmAttach OK\n";
 
     XSync(display, False);
