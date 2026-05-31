@@ -39,11 +39,11 @@ bool sdl1_impl::process_events() {
             return true;
         case SDL_KEYDOWN:
         case SDL_KEYUP:
-            if (event.key.keysym.sym ==
+            if (
 #ifdef GCW_ZERO
-                SDLK_HOME
+                event.key.keysym.sym == SDLK_HOME
 #else
-                SDLK_ESCAPE
+                event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_F1
 #endif
                 ) {
                 if (event.type == SDL_KEYDOWN) {

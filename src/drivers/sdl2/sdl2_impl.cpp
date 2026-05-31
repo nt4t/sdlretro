@@ -33,11 +33,11 @@ bool sdl2_impl::process_events() {
             return true;
         case SDL_KEYDOWN:
         case SDL_KEYUP:
-            if (event.key.keysym.scancode ==
+            if (
 #ifdef GCW_ZERO
-                SDL_SCANCODE_HOME
+                event.key.keysym.scancode == SDL_SCANCODE_HOME
 #else
-                SDL_SCANCODE_ESCAPE
+                event.key.keysym.scancode == SDL_SCANCODE_ESCAPE || event.key.keysym.scancode == SDL_SCANCODE_F1
 #endif
                 ) {
                 if (event.type == SDL_KEYDOWN) {
