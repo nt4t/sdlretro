@@ -285,7 +285,7 @@ std::string ui_host::download_bar(const std::string &url) {
     util::Downloader::Data data;
     while (downloader.get_running()) {
         usleep(time_to_sleep);
-        time_to_sleep = downloader.process(util::get_ticks_usec());
+        time_to_sleep = downloader.process(helper::get_ticks_usec());
         while (downloader.pop_response(data)) {
             printf("%lu %zu\n", data.response_code, data.content.length());
         }
