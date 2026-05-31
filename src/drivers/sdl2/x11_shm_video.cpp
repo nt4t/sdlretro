@@ -98,10 +98,12 @@ bool x11_shm_video::init_video(int width, int height) {
     std::cerr << "x11_shm: shmat OK\n";
 
     shm_image->data = shm_data;
-    shm_segment = (ShmSeg *)(intptr_t)shmid;
+    shm_info.shmid = shmid;
+    shm_info.shmaddr = shm_data;
+    shm_info.readOnly = False;
     shm_avail = true;
 
-    if (!XShmAttach(display, shm_segment)) {
+    if (!XShmAttach(display, &shm_info)) {
         fprintf(stderr, "x11_shm: XShmAttach failed\n");
         shmdt(shm_data);
         shmctl(shmid, IPC_RMID, nullptr);
@@ -128,8 +130,8 @@ bool x11_shm_video::init_video(int width, int height) {
 
 void x11_shm_video::deinit_video() {
     if (shm_image) {
-        if (shm_avail && shm_segment) {
-            XShmDetach(display, shm_segment);
+        if (shm_avail) {
+            XShmDetach(display, &shm_info);
         }
         if (shm_data) {
             shmdt(shm_data);
@@ -139,10 +141,9 @@ void x11_shm_video::deinit_video() {
         shm_image = nullptr;
     }
 
-    if (shm_segment) {
-        int shmid = (int)(intptr_t)shm_segment;
-        shmctl(shmid, IPC_RMID, nullptr);
-        shm_segment = nullptr;
+    if (shm_avail) {
+        shmctl(shm_info.shmid, IPC_RMID, nullptr);
+        shm_avail = false;
     }
 
     if (gc) {
@@ -185,10 +186,10 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
 
     if (shm_image && (width != curr_width || height != curr_height)) {
         int shmid = 0;
-        if (shm_avail && shm_segment) {
-            shmid = (int)(intptr_t)shm_segment;
-            XShmDetach(display, shm_segment);
-            shm_segment = nullptr;
+        if (shm_avail) {
+            shmid = shm_info.shmid;
+            XShmDetach(display, &shm_info);
+            shm_avail = false;
         }
         if (shm_data) {
             shmdt(shm_data);

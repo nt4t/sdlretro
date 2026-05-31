@@ -48,7 +48,7 @@ private:
     Window window = None;
     GC gc = None;
     XImage *shm_image = nullptr;
-    ShmSeg *shm_segment = nullptr;
+    XShmSegmentInfo shm_info{};
     char *shm_data = nullptr;
     bool shm_avail = false;
 
