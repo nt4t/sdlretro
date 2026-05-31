@@ -53,6 +53,8 @@ bool x11_shm_video::init_video(int width, int height) {
         ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 
     XMapWindow(display, window);
+    XRaiseWindow(display, window);
+    XFlush(display);
 
     XSync(display, False);
 
@@ -266,6 +268,9 @@ void x11_shm_video::render(const void *data, int width, int height, size_t pitch
 
     drawn = true;
 
+    static int frame_count = 0;
+    frame_count++;
+
     const uint32_t *src = (const uint32_t *)data;
     int src_stride = (int)pitch / 4;
 
@@ -277,6 +282,7 @@ void x11_shm_video::render(const void *data, int width, int height, size_t pitch
 
     XShmPutImage(display, window, gc, shm_image,
         0, 0, 0, 0, width, height, False);
+    XFlush(display);
 }
 
 void x11_shm_video::frame_render() {
@@ -344,6 +350,8 @@ void x11_shm_video::process_x11_events() {
         if (event.type == KeyPress || event.type == KeyRelease) {
             KeySym keysym = XLookupKeysym((XKeyEvent*)&event, 0);
             int state = event.type == KeyPress ? 1 : 0;
+            std::cerr << "x11_shm: key " << (event.type == KeyPress ? "down" : "up")
+                      << " keysym=" << keysym << " state=" << state << "\n";
             if (x11_key_callback) {
                 switch (keysym) {
                     case XK_Escape:     x11_key_callback(256, state); break;
