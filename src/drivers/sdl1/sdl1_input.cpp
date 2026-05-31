@@ -48,7 +48,7 @@ void sdl1_input::post_init() {
     keymap = {
         SDLK_k, // RETRO_DEVICE_ID_JOYPAD_B
         SDLK_j, // RETRO_DEVICE_ID_JOYPAD_Y
-        SDLK_c, // RETRO_DEVICE_ID_JOYPAD_SELECT
+        SDLK_F1, // RETRO_DEVICE_ID_JOYPAD_SELECT
         SDLK_v, // RETRO_DEVICE_ID_JOYPAD_START
         SDLK_w, // RETRO_DEVICE_ID_JOYPAD_UP
         SDLK_s, // RETRO_DEVICE_ID_JOYPAD_DOWN
