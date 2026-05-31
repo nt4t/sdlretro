@@ -269,13 +269,8 @@ void x11_shm_video::draw_text(int x, int y, const char *text, int width, bool sh
 }
 
 void x11_shm_video::get_text_width_and_height(const char *text, int &w, int &t, int &b) const {
-    if (!display) {
-        w = 0; t = 0; b = 0;
-        return;
-    }
-    XRectangle rect;
-    XTextExtents16(display, (const XChar2b *)text, strlen(text), &rect);
-    w = rect.width;
+    (void)text;
+    w = (int)strlen(text) * 7;
     t = 0;
     b = 12;
 }
