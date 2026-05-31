@@ -42,10 +42,9 @@ sdl1_video::~sdl1_video() {
     SDL_UnlockSurface(screen);
 }
 
-void sdl1_video::window_resized(int width, int height, bool fullscreen) {
+  void sdl1_video::window_resized(int width, int height, bool fullscreen) {
     if (fullscreen) {
         SDL_UnlockSurface(screen);
-        SDL_SetMouseMode(SDL_MOUSEMODE_HIDDEN);
         int flags = sdl_video_flags | SDL_FULLSCREEN;
         screen = SDL_SetVideoMode(0, 0, 16, flags);
         SDL_LockSurface(screen);
@@ -54,7 +53,6 @@ void sdl1_video::window_resized(int width, int height, bool fullscreen) {
         curr_height = screen->h;
     } else {
         SDL_UnlockSurface(screen);
-        SDL_SetMouseMode(SDL_MOUSEMODE_NORMAL);
         screen = SDL_SetVideoMode(width, height, 16, sdl_video_flags);
         SDL_LockSurface(screen);
         screen_ptr = screen->pixels;
