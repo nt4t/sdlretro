@@ -64,8 +64,8 @@ void sdl1_input::post_init() {
         SDLK_x, // RETRO_DEVICE_ID_JOYPAD_R3
     };
 #endif
-    if (game_to_km_mapping.empty()) {
-        for (size_t i = 0; i < keymap.size(); ++i) {
+    for (size_t i = 0; i < keymap.size(); ++i) {
+        if (km_to_game_mapping.find(keymap[i]) == km_to_game_mapping.end()) {
             set_km_mapping(keymap[i], i);
         }
     }
