@@ -83,9 +83,6 @@ else()
     message(FATAL_ERROR SDLRETRO_FRONTEND must be SDL1 or SDL2)
 endif()
 
-if(MSVC)
-    # implementation of getopt for MSVC
-    target_link_libraries(sdlretro wingetopt)
-endif()
+
 
 set_target_properties(sdlretro PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

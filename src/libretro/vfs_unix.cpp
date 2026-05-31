@@ -1,6 +1,6 @@
 #ifdef VFS_UNIX
 
-#include "util.h"
+#include "helper.h"
 
 #include <libretro.h>
 
@@ -134,7 +134,7 @@ int RETRO_CALLCONV unix_vfs_stat(const char *path, int32_t *size) {
 }
 
 int RETRO_CALLCONV unix_vfs_mkdir(const char *dir) {
-    return util::mkdir(dir);
+    return helper::mkdir(dir);
 }
 
 struct retro_vfs_dir_handle *RETRO_CALLCONV unix_vfs_opendir(const char *dir, bool include_hidden) {

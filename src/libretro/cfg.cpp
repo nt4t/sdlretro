@@ -37,7 +37,7 @@ void cfg::set_store_dir(const std::string &dir) {
         store_dir = n;
     helper::mkdir(store_dir, true);
 #else
-    util::mkdir(dir, true);
+    helper::mkdir(dir, true);
     if (realpath(dir.c_str(), n) == nullptr)
         store_dir = dir;
     else
