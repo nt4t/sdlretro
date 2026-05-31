@@ -31,6 +31,7 @@ public:
     }
     void clear() override;
     void flip() override {}
+    void process_x11_events() override;
     int get_font_size() const override { return 12; }
     void set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override;
     void draw_rectangle(int x, int y, int w, int h) override;
