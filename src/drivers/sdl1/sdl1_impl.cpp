@@ -49,6 +49,11 @@ bool sdl1_impl::process_events() {
                     static_cast<sdl1_video*>(video.get())->window_resized(w, h, g_cfg.get_fullscreen());
                     break;
                 }
+                if (event.key.keysym.sym == SDLK_F3) {
+                    static_cast<sdl1_video*>(video.get())->fps_enabled =
+                        !static_cast<sdl1_video*>(video.get())->fps_enabled;
+                    break;
+                }
             }
             if (
 #ifdef GCW_ZERO

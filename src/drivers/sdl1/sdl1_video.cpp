@@ -10,6 +10,8 @@
 
 #include <SDL.h>
 
+#include <cstdio>
+
 namespace drivers {
 
 const int sdl_video_flags = SDL_SWSURFACE |
@@ -90,7 +92,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     return true;
 }
 
-void sdl1_video::render(const void *data, int width, int height, size_t pitch) {
+ void sdl1_video::render(const void *data, int width, int height, size_t pitch) {
     if (!data) {
         drawn = false;
         return;
@@ -101,6 +103,16 @@ void sdl1_video::render(const void *data, int width, int height, size_t pitch) {
         return;
     }
     drawn = true;
+
+    if (fps_enabled) {
+        frame_count++;
+        double now = SDL_GetTicks() / 1000.0;
+        if (now - last_fps_update >= 1.0) {
+            current_fps = frame_count;
+            frame_count = 0;
+            last_fps_update = now;
+        }
+    }
 
     if (curr_width != width || curr_height != height) {
         game_resolution_changed(width, height, 0, 0, curr_pixel_format);
@@ -160,6 +172,11 @@ void sdl1_video::render(const void *data, int width, int height, size_t pitch) {
             draw_text(5, y, m.first.c_str(), 0, true);
             y += lh;
         }
+    }
+    if (fps_enabled && current_fps > 0) {
+        char fps_str[32];
+        snprintf(fps_str, sizeof(fps_str), "FPS: %d", current_fps);
+        draw_text(5, 20 * scale, fps_str, 0, true);
     }
 }
 
