@@ -67,14 +67,19 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         usleep(10000);
         curr_pixel_format = pixel_format;
         unsigned bpp = pixel_format == 1 ? 32 : 16;
+        bool was_fullscreen = (screen->flags & SDL_FULLSCREEN) != 0;
         if (width != 0 && height != 0) {
             curr_width = (int)width;
             curr_height = (int)height;
             auto scale = force_scale == 0 ? g_cfg.get_scale() : force_scale;
-            screen = SDL_SetVideoMode(width * scale, height * scale, bpp, sdl_video_flags);
+            int flags = sdl_video_flags;
+            if (was_fullscreen) flags |= SDL_FULLSCREEN;
+            screen = SDL_SetVideoMode(width * scale, height * scale, bpp, flags);
         } else {
             g_cfg.get_resolution(curr_width, curr_height);
-            screen = SDL_SetVideoMode(curr_width, curr_height, bpp, sdl_video_flags);
+            int flags = sdl_video_flags;
+            if (was_fullscreen) flags |= SDL_FULLSCREEN;
+            screen = SDL_SetVideoMode(curr_width, curr_height, bpp, flags);
         }
         SDL_LockSurface(screen);
         screen_ptr = screen->pixels;
