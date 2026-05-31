@@ -21,6 +21,7 @@ sdlretro loads libretro cores dynamically and provides a simple, easy-to-maintai
 - Audio resampling with libsamplerate
 - SRAM/RTC save management
 - OpenGL rendering (SDL2) or software rendering (SDL1)
+- X11 Shared Memory rendering (Linux/X11, opt-in)
 
 ## Build
 

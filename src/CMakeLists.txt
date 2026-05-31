@@ -31,7 +31,7 @@ endif()
 
 if(SDLRETRO_X11_SHM)
     find_package(X11 REQUIRED COMPONENTS Xext)
-    if(NOT X11_XSHM_FOUND)
+    if(NOT X11_Xext_FOUND)
         message(FATAL_ERROR "XShm extension not found. Install libxext-dev or equivalent.")
     endif()
 endif()
