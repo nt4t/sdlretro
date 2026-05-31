@@ -16,6 +16,7 @@ void menu_base::event_loop() {
     auto *input = driver->get_input();
     if (!parent) {
         driver->get_video()->gui_popup();
+        input->set_input_mode(drivers::input_base::mode_menu);
     }
 
     auto sel = init_sel;
