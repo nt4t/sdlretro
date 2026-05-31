@@ -225,6 +225,7 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
             std::cerr << "x11_shm: XShmCreateImage failed for " << width << "x" << height << "\n";
             return false;
         }
+        std::cerr << "x11_shm: recreated XShmCreateImage OK\n";
 
         int shmid = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
         if (shmid < 0) {
@@ -233,6 +234,7 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
             shm_image = nullptr;
             return false;
         }
+        std::cerr << "x11_shm: recreated shmget OK (shmid=" << shmid << ")\n";
 
         shm_data = (char *)shmat(shmid, nullptr, 0);
         if (shm_data == (char *)-1) {
@@ -242,6 +244,7 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
             shm_image = nullptr;
             return false;
         }
+        std::cerr << "x11_shm: recreated shmat OK\n";
 
         shm_image->data = shm_data;
         shm_info.shmid = shmid;
@@ -257,8 +260,10 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
             shm_data = nullptr;
             return false;
         }
+        std::cerr << "x11_shm: recreated XShmAttach OK\n";
 
         XSync(display, False);
+        XFlush(display);
         shm_avail = true;
         curr_width = width;
         curr_height = height;
