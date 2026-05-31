@@ -194,83 +194,15 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
 
     std::cerr << "x11_shm: game_resolution_changed " << width << "x" << height
               << " (curr=" << curr_width << "x" << curr_height
-              << " shm_image=" << (void*)shm_image << ")\n";
-
-    if (shm_image && (width != curr_width || height != curr_height)) {
-        int shmid = 0;
-        if (shm_avail) {
-            shmid = shm_info.shmid;
-            XShmDetach(display, &shm_info);
-            shm_avail = false;
-        }
-        if (shm_data) {
-            shmdt(shm_data);
-            shm_data = nullptr;
-        }
-        if (shmid) {
-            shmctl(shmid, IPC_RMID, nullptr);
-        }
-        XDestroyImage(shm_image);
-        shm_image = nullptr;
-    }
+              << " shm=" << (void*)shm_image << " avail=" << shm_avail << ")\n";
 
     if (!shm_image) {
-        int screen = DefaultScreen(display);
-        Visual *visual = DefaultVisual(display, screen);
-        int depth = DefaultDepth(display, screen);
-
-        shm_image = XShmCreateImage(display, visual, depth, ZPixmap,
-            nullptr, nullptr, width, height);
-        if (!shm_image) {
-            std::cerr << "x11_shm: XShmCreateImage failed for " << width << "x" << height << "\n";
-            return false;
-        }
-        std::cerr << "x11_shm: recreated XShmCreateImage OK\n";
-
-        int shmid = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
-        if (shmid < 0) {
-            std::cerr << "x11_shm: shmget failed\n";
-            XDestroyImage(shm_image);
-            shm_image = nullptr;
-            return false;
-        }
-        std::cerr << "x11_shm: recreated shmget OK (shmid=" << shmid << ")\n";
-
-        shm_data = (char *)shmat(shmid, nullptr, 0);
-        if (shm_data == (char *)-1) {
-            std::cerr << "x11_shm: shmat failed\n";
-            shmctl(shmid, IPC_RMID, nullptr);
-            XDestroyImage(shm_image);
-            shm_image = nullptr;
-            return false;
-        }
-        std::cerr << "x11_shm: recreated shmat OK\n";
-
-        shm_image->data = shm_data;
-        shm_info.shmid = shmid;
-        shm_info.shmaddr = shm_data;
-        shm_info.readOnly = False;
-
-        if (!XShmAttach(display, &shm_info)) {
-            std::cerr << "x11_shm: XShmAttach failed\n";
-            shmdt(shm_data);
-            shmctl(shmid, IPC_RMID, nullptr);
-            XDestroyImage(shm_image);
-            shm_image = nullptr;
-            shm_data = nullptr;
-            return false;
-        }
-        std::cerr << "x11_shm: recreated XShmAttach OK\n";
-
-        XSync(display, False);
-        XFlush(display);
-        shm_avail = true;
-        curr_width = width;
-        curr_height = height;
-
-        std::cerr << "x11_shm: shm_image recreated " << width << "x" << height << "\n";
+        std::cerr << "x11_shm: shm_image is null!\n";
+        return false;
     }
 
+    curr_width = width;
+    curr_height = height;
     return true;
 }
 
