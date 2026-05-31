@@ -10,6 +10,7 @@
 #include <sys/shm.h>
 #include <cstring>
 #include <cstdio>
+#include <iostream>
 
 namespace drivers {
 
@@ -28,10 +29,12 @@ bool x11_shm_video::init_video(int width, int height) {
         fprintf(stderr, "x11_shm: XOpenDisplay failed\n");
         return false;
     }
+    std::cerr << "x11_shm: XOpenDisplay OK\n";
 
     int screen = DefaultScreen(display);
     Visual *visual = DefaultVisual(display, screen);
     int depth = DefaultDepth(display, screen);
+    std::cerr << "x11_shm: screen=" << screen << " depth=" << depth << "\n";
 
     window = XCreateSimpleWindow(display, RootWindow(display, screen),
         0, 0, width, height, 0,
@@ -43,6 +46,7 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
+    std::cerr << "x11_shm: XCreateSimpleWindow OK (win=" << window << ")\n";
 
     XSelectInput(display, window, KeyPressMask | KeyReleaseMask |
         ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
@@ -58,6 +62,7 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
+    std::cerr << "x11_shm: XShmQueryExtension OK\n";
 
     shm_image = XShmCreateImage(display, visual, depth, ZPixmap,
         nullptr, nullptr, width * 4, 32);
@@ -68,6 +73,7 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
+    std::cerr << "x11_shm: XShmCreateImage OK\n";
 
     int shmid = shmget(IPC_PRIVATE, width * height * 4, IPC_CREAT | 0600);
     if (shmid < 0) {
@@ -78,6 +84,7 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
+    std::cerr << "x11_shm: shmget OK (shmid=" << shmid << ")\n";
 
     shm_data = (char *)shmat(shmid, nullptr, 0);
     if (shm_data == (char *)-1) {
@@ -89,6 +96,7 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
+    std::cerr << "x11_shm: shmat OK\n";
 
     shm_image->data = shm_data;
     shm_segment = (ShmSeg *)(intptr_t)shmid;
@@ -104,6 +112,7 @@ bool x11_shm_video::init_video(int width, int height) {
         display = nullptr;
         return false;
     }
+    std::cerr << "x11_shm: XShmAttach OK\n";
 
     XSync(display, False);
 
@@ -114,6 +123,7 @@ bool x11_shm_video::init_video(int width, int height) {
     game_width = width;
     game_height = height;
 
+    std::cerr << "x11_shm: init_video SUCCESS\n";
     return true;
 }
 
@@ -170,6 +180,10 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
     game_max_width = max_width;
     game_max_height = max_height;
 
+    std::cerr << "x11_shm: game_resolution_changed " << width << "x" << height
+              << " (curr=" << curr_width << "x" << curr_height
+              << " shm_image=" << (void*)shm_image << ")\n";
+
     if (shm_image && (width != curr_width || height != curr_height)) {
         int shmid = 0;
         if (shm_avail && shm_segment) {
@@ -189,6 +203,7 @@ bool x11_shm_video::game_resolution_changed(int width, int height, int max_width
     }
 
     if (!shm_image) {
+        std::cerr << "x11_shm: shm_image is null, returning false\n";
         XSendEvent(display, window, False, 0, nullptr);
         return false;
     }

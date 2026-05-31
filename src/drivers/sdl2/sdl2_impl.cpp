@@ -23,8 +23,10 @@ sdl2_impl::sdl2_impl() {
     auto x11_video = std::make_shared<x11_shm_video>();
     if (x11_video->init_video(640, 480)) {
         video = x11_video;
+        LOG(INFO, "X11 Shm backend selected");
     } else {
         video = std::make_shared<sdl2_video>();
+        LOG(INFO, "X11 Shm init failed, falling back to OpenGL");
     }
 #else
     video = std::make_shared<sdl2_video>();
