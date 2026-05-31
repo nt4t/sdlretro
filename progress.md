@@ -5,10 +5,10 @@
 | Time | Phase | Status | Notes |
 |------|-------|--------|-------|
 | 2026-05-31 | Design | Complete | Design approved, spec committed |
-| 2026-05-31 | Phase 1: Build System | Pending | |
-| 2026-05-31 | Phase 2: X11 Shm Backend | Pending | |
-| 2026-05-31 | Phase 3: Driver Integration | Pending | |
-| 2026-05-31 | Phase 4: Testing | Pending | |
+| 2026-05-31 | Phase 1: Build System | Complete | SDLRETRO_X11_SHM option added |
+| 2026-05-31 | Phase 2: X11 Shm Backend | Complete | x11_shm_video.cpp/h created |
+| 2026-05-31 | Phase 3: Driver Integration | Complete | sdl2_impl.cpp updated |
+| 2026-05-31 | Phase 4: Testing | Pending | Needs Linux/X11 build test |
 
 ## Build Commands
 

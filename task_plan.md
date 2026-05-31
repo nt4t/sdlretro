@@ -6,28 +6,28 @@ Add an X11 Shared Memory (XShm) video rendering backend for sdlretro on Linux/X1
 ## Phases
 
 ### Phase 1: Build System Setup
-- [ ] Add `SDLRETRO_X11_SHM` option to `src/CMakeLists.txt`
-- [ ] Add X11/XShm dependency detection in CMake
-- [ ] Add `x11_shm_video.cpp` to SDL2 driver sources
-- [ ] Add compile definition `SDLRETRO_X11_SHM`
+- [x] Add `SDLRETRO_X11_SHM` option to `src/CMakeLists.txt`
+- [x] Add X11/XShm dependency detection in CMake
+- [x] Add `x11_shm_video.cpp` to SDL2 driver sources
+- [x] Add compile definition `SDLRETRO_X11_SHM`
 
 ### Phase 2: X11 Shm Video Backend (x11_shm_video.h/cpp)
-- [ ] Create `x11_shm_video.h` — header with class declaration
-- [ ] Create `x11_shm_video.cpp` — implementation
-  - [ ] `init_video()` — XOpenDisplay, XCreateSimpleWindow, XShmCreateImage
-  - [ ] `render()` — XShmPutImage for frame delivery
-  - [ ] `frame_render()` — no-op (synchronous)
-  - [ ] `flip()` — no-op
-  - [ ] `clear()`, `fill_rectangle()` — X11 drawing primitives
-  - [ ] `draw_text()` — X11 bitmap text
-  - [ ] `gui_predraw()` — prepare for overlay
-  - [ ] `get_resolution()`, `window_resized()`, `game_resolution_changed()`
-  - [ ] Fallback to OpenGL if X11/XShm unavailable
+- [x] Create `x11_shm_video.h` — header with class declaration
+- [x] Create `x11_shm_video.cpp` — implementation
+  - [x] `init_video()` — XOpenDisplay, XCreateSimpleWindow, XShmCreateImage
+  - [x] `render()` — XShmPutImage for frame delivery
+  - [x] `frame_render()` — no-op (synchronous)
+  - [x] `flip()` — no-op
+  - [x] `clear()`, `fill_rectangle()` — X11 drawing primitives
+  - [x] `draw_text()` — X11 bitmap text
+  - [x] `gui_predraw()` — prepare for overlay
+  - [x] `get_resolution()`, `window_resized()`, `game_resolution_changed()`
+  - [x] Fallback to OpenGL if X11/XShm unavailable
 
 ### Phase 3: Driver Integration
-- [ ] Modify `sdl2_impl.h` — conditional video class selection
-- [ ] Modify `sdl2_impl.cpp` — conditional window creation (X11 vs SDL2)
-- [ ] Wire up input events for X11 window (SDL already handles this)
+- [x] Modify `sdl2_impl.h` — conditional video class selection
+- [x] Modify `sdl2_impl.cpp` — conditional window creation (X11 vs SDL2)
+- [x] Wire up input events for X11 window (SDL already handles this)
 
 ### Phase 4: Testing & Verification
 - [ ] Build with `SDLRETRO_X11_SHM=ON` on Linux/X11
