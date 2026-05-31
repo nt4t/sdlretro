@@ -176,7 +176,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     if (fps_enabled && current_fps > 0) {
         char fps_str[32];
         snprintf(fps_str, sizeof(fps_str), "FPS: %d", current_fps);
-        draw_text_pixel(5, 20 * scale, fps_str, 0, true);
+        draw_text_pixel(5, 30, fps_str, 0, true);
     }
 }
 
