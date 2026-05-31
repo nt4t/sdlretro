@@ -54,6 +54,7 @@ private:
 
     int curr_width = 0, curr_height = 0;
     int game_width = 0, game_height = 0;
+    int game_max_width = 0, game_max_height = 0;
     bool drawn = false;
     bool overlay_dirty = false;
 
