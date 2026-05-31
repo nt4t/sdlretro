@@ -93,7 +93,6 @@ endif()
 
 if(SDLRETRO_X11_SHM)
     target_compile_definitions(sdlretro PRIVATE SDLRETRO_X11_SHM)
-    target_link_libraries(sdlretro ${X11_LIBRARIES} ${X11_XSHM_LIB})
 endif()
 
 

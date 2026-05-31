@@ -19,6 +19,8 @@ if(SDLRETRO_X11_SHM)
         x11_shm_video.cpp
         x11_shm_video.h
     )
+    target_compile_definitions(driver_sdl2 PUBLIC SDLRETRO_X11_SHM)
+    target_link_libraries(driver_sdl2 ${X11_LIBRARIES} ${X11_XSHM_LIB})
 endif()
 
 target_compile_definitions(driver_sdl2 PUBLIC SDL_MAIN_HANDLED)
