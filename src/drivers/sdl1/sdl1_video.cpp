@@ -247,7 +247,7 @@ void sdl1_video::get_text_width_and_height(const char *text, int &w, int &t, int
     b = -255;
     if (ttf[0]) {
         while (*text != 0) {
-            uint32_t ch = util::utf8_to_ucs4(text);
+            uint32_t ch = helper::utf8_to_ucs4(text);
             if (ch == 0 || ch > 0xFFFFu) continue;
             uint8_t width;
             int8_t tt, tb;
