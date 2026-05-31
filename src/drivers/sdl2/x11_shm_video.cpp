@@ -283,7 +283,10 @@ void x11_shm_video::render(const void *data, int width, int height, size_t pitch
                   << " game=" << width << "x" << height
                   << " shm=" << shm_image->width << "x" << shm_image->height
                   << " bpp=" << shm_image->bits_per_pixel
-                  << " bpl=" << shm_image->bytes_per_line << "\n";
+                  << " bpl=" << shm_image->bytes_per_line
+                  << " data=" << (void*)shm_image->data
+                  << " shm_avail=" << shm_avail
+                  << " shmid=" << shm_info.shmid << "\n";
     }
 
     const uint32_t *src = (const uint32_t *)data;
