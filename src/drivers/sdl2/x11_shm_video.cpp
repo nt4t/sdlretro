@@ -58,6 +58,14 @@ bool x11_shm_video::init_video(int width, int height) {
 
     XSync(display, False);
 
+    // Verify window is visible
+    Window root, child;
+    int rx, ry, wx, wy;
+    unsigned int bw, depth;
+    if (XGetGeometry(display, window, &root, &rx, &ry, &wx, &wy, &bw, &depth)) {
+        std::cerr << "x11_shm: window geom: pos=(" << rx << "," << ry << ") size=" << wx << "x" << wy << " depth=" << depth << "\n";
+    }
+
     if (!XShmQueryExtension(display)) {
         fprintf(stderr, "x11_shm: XShm extension not available\n");
         XDestroyWindow(display, window);
@@ -270,6 +278,13 @@ void x11_shm_video::render(const void *data, int width, int height, size_t pitch
 
     static int frame_count = 0;
     frame_count++;
+    if (frame_count <= 3) {
+        std::cerr << "x11_shm: render frame=" << frame_count
+                  << " game=" << width << "x" << height
+                  << " shm=" << shm_image->width << "x" << shm_image->height
+                  << " bpp=" << shm_image->bits_per_pixel
+                  << " bpl=" << shm_image->bytes_per_line << "\n";
+    }
 
     const uint32_t *src = (const uint32_t *)data;
     int src_stride = (int)pitch / 4;
@@ -280,8 +295,10 @@ void x11_shm_video::render(const void *data, int width, int height, size_t pitch
         memcpy(dst, src_row, width * 4);
     }
 
-    XShmPutImage(display, window, gc, shm_image,
-        0, 0, 0, 0, width, height, False);
+    if (XShmPutImage(display, window, gc, shm_image,
+        0, 0, 0, 0, width, height, False) == 0) {
+        std::cerr << "x11_shm: XShmPutImage returned 0!\n";
+    }
     XFlush(display);
 }
 
