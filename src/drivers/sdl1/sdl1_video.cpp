@@ -287,28 +287,13 @@ void sdl1_video::get_text_width_and_height(const char *text, int &w, int &t, int
     w = 0;
     t = 255;
     b = -255;
-    if (ttf[0]) {
-        while (*text != 0) {
-            uint32_t ch = helper::utf8_to_ucs4(text);
-            if (ch == 0 || ch > 0xFFFFu) continue;
-            uint8_t width;
-            int8_t tt, tb;
-            ttf[0]->get_char_width_and_height(ch, width, tt, tb);
-            if (width) {
-                w += width;
-                if (tt < t) t = tt;
-                if (tb > b) b = tb;
-            }
-        }
-    } else {
-        while (*text) {
-            uint8_t c = *text++;
-            if (c > 0x7F) continue;
-            const auto &fd = get_pixel_font_data(c);
-            w += fd.sw;
-            if (fd.y < t) t = fd.y;
-            if (fd.y + fd.h > b) b = fd.y + fd.h;
-        }
+    while (*text) {
+        uint8_t c = *text++;
+        if (c > 0x7F) continue;
+        const auto &fd = get_pixel_font_data(c);
+        w += fd.sw;
+        if (fd.y < t) t = fd.y;
+        if (fd.y + fd.h > b) b = fd.y + fd.h;
     }
 }
 
