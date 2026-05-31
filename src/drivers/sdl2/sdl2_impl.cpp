@@ -60,7 +60,7 @@ bool sdl2_impl::process_events() {
 #ifdef GCW_ZERO
                 event.key.keysym.scancode == SDL_SCANCODE_HOME
 #else
-                event.key.keysym.scancode == SDL_SCANCODE_ESCAPE || event.key.keysym.scancode == SDL_SCANCODE_F1
+                event.key.keysym.scancode == SDL_SCANCODE_F1
 #endif
                 ) {
                 if (event.type == SDL_KEYDOWN) {
@@ -69,6 +69,8 @@ bool sdl2_impl::process_events() {
                     else
                         return true;
                 }
+            } else if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+                return true;
             } else {
                 input->on_km_input(event.key.keysym.scancode, event.type == SDL_KEYDOWN);
             }

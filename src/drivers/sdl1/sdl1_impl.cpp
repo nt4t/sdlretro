@@ -59,7 +59,7 @@ bool sdl1_impl::process_events() {
 #ifdef GCW_ZERO
                 event.key.keysym.sym == SDLK_HOME
 #else
-                event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_F1
+                event.key.keysym.sym == SDLK_F1
 #endif
                 ) {
                 if (event.type == SDL_KEYDOWN) {
@@ -68,6 +68,8 @@ bool sdl1_impl::process_events() {
                     else
                         return true;
                 }
+            } else if (event.key.keysym.sym == SDLK_ESCAPE) {
+                return true;
             } else {
                 input->on_km_input(event.key.keysym.sym, event.type == SDL_KEYDOWN);
             }
