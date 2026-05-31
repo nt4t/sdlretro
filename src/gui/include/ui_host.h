@@ -4,6 +4,7 @@
 #include <downloader.h>
 #endif
 
+#include <cstddef>
 #include <utility>
 #include <vector>
 #include <memory>

@@ -2,6 +2,7 @@
 
 #include "gui_base.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
