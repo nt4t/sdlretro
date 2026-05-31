@@ -169,7 +169,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         uint32_t lh = get_font_size() + 2;
         uint32_t y = (curr_height - 5 - (messages.size() - 1) * lh) * scale;
         for (auto &m: messages) {
-            draw_text(5, y, m.first.c_str(), 0, true);
+            draw_text_pixel(5, y, m.first.c_str(), 0, true);
             y += lh;
         }
     }
