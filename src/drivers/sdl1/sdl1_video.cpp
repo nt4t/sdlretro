@@ -301,11 +301,6 @@ void sdl1_video::draw_text_pixel(int x, int y, const char *text, int width, bool
     bool allow_wrap = false;
     int nwidth;
     int ox = x;
-#ifdef GCW_ZERO
-    y -= 8;
-#else
-    y -= 16;
-#endif
     unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
     if (width == 0) {
         nwidth = width = screen->w - x;
