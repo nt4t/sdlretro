@@ -39,6 +39,8 @@ bool x11_shm_video::init_video(int width, int height) {
         0, 0, width, height, 0,
         BlackPixel(display, screen), WhitePixel(display, screen));
 
+    XStoreName(display, window, "SDLRetro");
+
     if (!window) {
         fprintf(stderr, "x11_shm: XCreateSimpleWindow failed\n");
         XCloseDisplay(display);
@@ -332,6 +334,47 @@ void x11_shm_video::draw_text_impl(int x, int y, const char *text, int width, bo
         XDrawString(display, window, gc, x + 1, y + 2, text, strlen(text));
     }
     XDrawString(display, window, gc, x, y, text, strlen(text));
+}
+
+void x11_shm_video::process_x11_events() {
+    if (!display) return;
+    XEvent event;
+    while (XPending(display)) {
+        XNextEvent(display, &event);
+        if (event.type == KeyPress || event.type == KeyRelease) {
+            KeySym keysym = XLookupKeysym((XKeyEvent*)&event, 0);
+            int state = event.type == KeyPress ? 1 : 0;
+            if (x11_key_callback) {
+                switch (keysym) {
+                    case XK_Escape:     x11_key_callback(256, state); break;
+                    case XK_F1:         x11_key_callback(265, state); break;
+                    case XK_Tab:        x11_key_callback(270, state); break;
+                    case XK_Return:     x11_key_callback(257, state); break;
+                    case XK_space:      x11_key_callback(258, state); break;
+                    case XK_Left:       x11_key_callback(263, state); break;
+                    case XK_Right:      x11_key_callback(262, state); break;
+                    case XK_Up:         x11_key_callback(264, state); break;
+                    case XK_Down:       x11_key_callback(265, state); break;
+                    case XK_BackSpace:  x11_key_callback(259, state); break;
+                    case XK_Delete:     x11_key_callback(261, state); break;
+                    default: break;
+                }
+            }
+        } else if (event.type == ButtonPress || event.type == ButtonRelease) {
+            int btn = event.button.button;
+            int state = event.type == ButtonPress ? 1 : 0;
+            if (x11_key_callback) {
+                switch (btn) {
+                    case 1: x11_key_callback(1024 + 1, state); break;
+                    case 2: x11_key_callback(1024 + 2, state); break;
+                    case 3: x11_key_callback(1024 + 3, state); break;
+                    default: break;
+                }
+            }
+        } else if (event.type == MotionNotify) {
+            // TODO: mouse motion
+        }
+    }
 }
 
 void x11_shm_video::gui_predraw() {

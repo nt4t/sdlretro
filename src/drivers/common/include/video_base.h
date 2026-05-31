@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
 
 extern "C" {
 struct retro_hw_render_callback;
@@ -47,8 +48,12 @@ public:
     virtual void draw_text(int x, int y, const char *text, int width, bool shadow) {}
     virtual void get_text_width_and_height(const char *text, int &w, int &t, int &b) const { }
 
-    virtual void clear() {}
+  virtual void clear() {}
     virtual void flip() {}
+
+    virtual void process_x11_events() {}
+    using x11_key_cb = std::function<void(int scancode, int state)>;
+    void set_x11_key_callback(x11_key_cb cb) { x11_key_callback = std::move(cb); }
 
     void add_message(const char *text, uint32_t frames);
     void message_frame_pass();
@@ -59,6 +64,7 @@ protected:
     bool skip_frame = false;
     std::vector<std::pair<std::string, uint32_t>> messages;
     float aspect_ratio = 0.f;
+    x11_key_cb x11_key_callback;
 };
 
 }

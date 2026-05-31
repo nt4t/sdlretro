@@ -23,6 +23,9 @@ sdl2_impl::sdl2_impl() {
     auto x11_video = std::make_shared<x11_shm_video>();
     if (x11_video->init_video(640, 480)) {
         video = x11_video;
+        video->set_x11_key_callback([this](int scancode, int state) {
+            input->on_km_input(scancode, state != 0);
+        });
         LOG(INFO, "X11 Shm backend selected");
     } else {
         video = std::make_shared<sdl2_video>();
@@ -44,6 +47,7 @@ sdl2_impl::~sdl2_impl() {
 }
 
 bool sdl2_impl::process_events() {
+    video->process_x11_events();
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
