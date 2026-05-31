@@ -361,7 +361,7 @@ void x11_shm_video::process_x11_events() {
                 }
             }
         } else if (event.type == ButtonPress || event.type == ButtonRelease) {
-            int btn = event.button.button;
+            int btn = event.xbutton.button;
             int state = event.type == ButtonPress ? 1 : 0;
             if (x11_key_callback) {
                 switch (btn) {
