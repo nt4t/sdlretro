@@ -74,6 +74,7 @@ public:
 
     /* process events, for menu use, return true for QUIT event */
     virtual bool process_events() { return false; }
+    virtual bool get_menu_button_pressed() const { return false; }
 
 private:
     /* internal init/deinit */

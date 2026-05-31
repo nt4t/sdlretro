@@ -29,7 +29,8 @@ void menu_base::event_loop() {
             if (driver->process_events()) {
                 ok_pressed = false;
                 leave_event_loop();
-                driver->shutdown();
+                if (!driver->get_menu_button_pressed())
+                    driver->shutdown();
                 break;
             }
             input->input_poll();
@@ -46,7 +47,8 @@ void menu_base::event_loop() {
             if (driver->process_events()) {
                 ok_pressed = false;
                 leave_event_loop();
-                driver->shutdown();
+                if (!driver->get_menu_button_pressed())
+                    driver->shutdown();
                 break;
             }
             if (poll_input() && running && !force_refreshing) {
