@@ -215,9 +215,9 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                     uint16_t *dst = (uint16_t*)dest;
                     for (int x = 0; x < width; x++) {
                         uint32_t p = src[x];
-                        uint16_t r = (p >> 16) & 0x1F;
-                        uint16_t g = (p >> 8) & 0x3F;
-                        uint16_t b = p & 0x1F;
+                        uint16_t r = ((p >> 16) & 0xFF) * 31 / 255;
+                        uint16_t g = ((p >> 8) & 0xFF) * 63 / 255;
+                        uint16_t b = (p & 0xFF) * 31 / 255;
                         dst[x] = (r << 11) | (g << 5) | b;
                     }
                     dest += dest_pitch;
@@ -298,9 +298,9 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                 int x = 0; \
                 for (int i = 0; i < width; i++) { \
                     uint32_t p = input_data[i]; \
-                    uint16_t r = (p >> 16) & 0x1F; \
-                    uint16_t g = (p >> 8) & 0x3F; \
-                    uint16_t b = p & 0x1F; \
+                    uint16_t r = ((p >> 16) & 0xFF) * 31 / 255; \
+                    uint16_t g = ((p >> 8) & 0xFF) * 63 / 255; \
+                    uint16_t b = (p & 0xFF) * 31 / 255; \
                     TYPE_OUT pix = (TYPE_OUT)((r << 11) | (g << 5) | b); \
                     for (int j = 0; j < scale; j++) { \
                         h_line[x++] = pix; \
