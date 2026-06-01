@@ -172,19 +172,23 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         int scaled_h = height * scale;
         offset_x = (screen->w - scaled_w) / 2;
         offset_y = (screen->h - scaled_h) / 2;
-        if (offset_x < 0) offset_x = 0;
+       if (offset_x < 0) offset_x = 0;
         if (offset_y < 0) offset_y = 0;
         
-        uint32_t black = 0;
         if (output_bpp == 32) {
-            black = 0xFF000000;
+            uint32_t black = 0xFF000000;
+            uint32_t *clear_ptr = (uint32_t*)screen_ptr;
+            size_t clear_count = (size_t)screen->w * screen->h;
+            for (size_t i = 0; i < clear_count; i++) {
+                clear_ptr[i] = black;
+            }
         } else {
-            black = 0x0000;
-        }
-        auto *clear_ptr = (uint32_t*)screen_ptr;
-        size_t clear_count = (size_t)screen->w * screen->h;
-        for (size_t i = 0; i < clear_count; i++) {
-            clear_ptr[i] = black;
+            uint16_t black = 0x0000;
+            uint16_t *clear_ptr = (uint16_t*)screen_ptr;
+            size_t clear_count = (size_t)screen->w * screen->h;
+            for (size_t i = 0; i < clear_count; i++) {
+                clear_ptr[i] = black;
+            }
         }
     }
     
