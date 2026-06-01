@@ -81,7 +81,27 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         if (width != 0 && height != 0) {
             curr_width = (int)width;
             curr_height = (int)height;
-            auto scale = force_scale == 0 ? g_cfg.get_scale() : force_scale;
+            int scale = force_scale == 0 ? g_cfg.get_scale() : force_scale;
+            if (g_cfg.get_integer_scaling() && force_scale == 0) {
+                int screen_w = 0, screen_h = 0;
+                if (was_fullscreen) {
+                    SDL_Surface *fs = SDL_SetVideoMode(0, 0, 16, sdl_video_flags | SDL_FULLSCREEN);
+                    if (fs) {
+                        screen_w = fs->w;
+                        screen_h = fs->h;
+                    }
+                } else {
+                    screen_w = screen->w;
+                    screen_h = screen->h;
+                }
+                if (screen_w > 0 && screen_h > 0) {
+                    int scale_x = screen_w / width;
+                    int scale_y = screen_h / height;
+                    scale = (scale_x < scale_y) ? scale_x : scale_y;
+                    if (scale < 1) scale = 1;
+                }
+            }
+            current_scale = scale;
             int flags = sdl_video_flags;
             if (was_fullscreen) flags |= SDL_FULLSCREEN;
             screen = SDL_SetVideoMode(width * scale, height * scale, bpp, flags);
@@ -126,7 +146,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         game_resolution_changed(width, height, 0, 0, curr_pixel_format);
     }
     int h = static_cast<int>(height);
-    auto scale = g_cfg.get_scale();
+    int scale = current_scale;
     unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
     if (scale == 1) {
         auto *pixels = static_cast<uint8_t *>(screen_ptr);

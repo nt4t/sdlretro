@@ -57,6 +57,7 @@ private:
 
     /* override global scale cfg */
     int force_scale = 1;
+    int current_scale = 1;
 
     uint8_t draw_color[4] = {};
 
