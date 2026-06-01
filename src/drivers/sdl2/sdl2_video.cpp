@@ -429,6 +429,8 @@ void sdl2_video::gui_predraw() {
 
     set_draw_color(0, 0, 0, 0xA0);
     fill_rectangle(0, 0, curr_width, curr_height);
+
+    glDisable(GL_BLEND);
 }
 
 void sdl2_video::config_changed() {
