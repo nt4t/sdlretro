@@ -26,13 +26,14 @@ sdl2_impl::sdl2_impl() {
         video->set_x11_key_callback([this](int scancode, int state) {
             input->on_km_input(scancode, state != 0);
         });
-        LOG(INFO, "X11 Shm backend selected");
+        LOG(INFO, "Render backend: X11 Shm");
     } else {
         video = std::make_shared<sdl2_video>();
-        LOG(INFO, "X11 Shm init failed, falling back to OpenGL");
+        LOG(INFO, "Render backend: OpenGL (X11 Shm init failed)");
     }
 #else
     video = std::make_shared<sdl2_video>();
+    LOG(INFO, "Render backend: OpenGL");
 #endif
 
     input = std::make_shared<sdl2_input>();
