@@ -57,6 +57,13 @@ bool sdl2_impl::process_events() {
         case SDL_KEYDOWN:
         case SDL_KEYUP:
             LOG(TRACE, "KEY {} scancode={}", event.type == SDL_KEYDOWN ? "DOWN" : "UP", SDL_GetScancodeName(event.key.keysym.scancode));
+            if (event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_RETURN && (event.key.keysym.mod & KMOD_ALT)) {
+                g_cfg.set_fullscreen(!g_cfg.get_fullscreen());
+                int w, h;
+                g_cfg.get_resolution(w, h);
+                video->window_resized(w, h, g_cfg.get_fullscreen());
+                break;
+            }
             if (
 #ifdef GCW_ZERO
                 event.key.keysym.scancode == SDL_SCANCODE_HOME
