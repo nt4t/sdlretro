@@ -93,6 +93,12 @@ private:
     /* indicate wheather frame was drawn, for auto frameskip use */
     bool drawn = false;
 
+    /* fps counter */
+    bool fps_enabled = false;
+    int frame_count = 0;
+    int current_fps = 0;
+    double last_fps_update = 0.0;
+
     /* bitmap font glyph cache */
     struct glyph_cache_entry {
         uint8_t *pixels = nullptr;

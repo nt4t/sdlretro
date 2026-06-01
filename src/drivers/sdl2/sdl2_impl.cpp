@@ -70,6 +70,11 @@ bool sdl2_impl::process_events() {
                     else
                         return true;
                 }
+            } else if (event.key.keysym.scancode == SDL_SCANCODE_F3) {
+                if (event.type == SDL_KEYDOWN) {
+                    auto *v = static_cast<sdl2_video*>(video.get());
+                    v->fps_enabled = !v->fps_enabled;
+                }
             } else if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
                 return true;
             } else {

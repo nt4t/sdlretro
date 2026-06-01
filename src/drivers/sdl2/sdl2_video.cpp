@@ -247,6 +247,16 @@ void sdl2_video::render(const void *data, int width, int height, size_t pitch) {
         }
     }
     drawn = true;
+
+    if (fps_enabled) {
+        frame_count++;
+        double now = SDL_GetTicks() / 1000.0;
+        if (now - last_fps_update >= 1.0) {
+            current_fps = frame_count;
+            frame_count = 0;
+            last_fps_update = now;
+        }
+    }
 }
 
 void sdl2_video::frame_render() {
@@ -270,6 +280,11 @@ void sdl2_video::frame_render() {
             draw_text(5, y, m.first.c_str(), 0, true);
             y += lh;
         }
+    }
+    if (fps_enabled && current_fps > 0) {
+        char fps_str[32];
+        snprintf(fps_str, sizeof(fps_str), "FPS: %d", current_fps);
+        draw_text(5, 30, fps_str, 0, true);
     }
     flip();
 }
