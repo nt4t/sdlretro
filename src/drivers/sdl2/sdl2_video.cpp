@@ -13,6 +13,8 @@
 
 #include "bmfont.inl"
 
+inline const font_data_t &get_pixel_font_data(uint8_t c);
+
 #include <glad/glad.h>
 #include <SDL.h>
 
@@ -859,10 +861,6 @@ bool sdl2_video::gl_renderer_gen_texture(const void *data, size_t pitch) const {
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     return true;
-}
-
-inline const font_data_t &get_pixel_font_data(uint8_t c) {
-    return font_big_data[c];
 }
 
 void sdl2_video::init_glyph_cache() {
