@@ -211,7 +211,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                 input += pitch;
             }
         }
-    } else {
+    } else if (scale > 0) {
     #define CODE_WITH_TYPE(TYPE) \
         int output_pitch = screen->pitch / sizeof(TYPE); \
         const TYPE *input_data = static_cast<const TYPE*>(data); \
