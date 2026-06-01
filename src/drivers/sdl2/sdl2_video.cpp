@@ -13,8 +13,6 @@
 
 #include "bmfont.inl"
 
-inline const font_data_t &get_pixel_font_data(uint8_t c);
-
 #include <glad/glad.h>
 #include <SDL.h>
 
@@ -346,6 +344,10 @@ void sdl2_video::fill_rectangle(int x, int y, int w, int h) {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+inline const font_data_t &get_pixel_font_data(uint8_t c) {
+    return font_big_data[c];
 }
 
 void sdl2_video::draw_text(int x, int y, const char *text, int width, bool shadow) {
