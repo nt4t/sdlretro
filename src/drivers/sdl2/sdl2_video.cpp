@@ -809,7 +809,7 @@ void sdl2_video::gl_renderer_create_empty_texture() const {
         }
         break;
     default:
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, gl_renderer.texture_w, gl_renderer.texture_h, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, gl_renderer.texture_w, gl_renderer.texture_h, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, nullptr);
         break;
     }
     glBindTexture(GL_TEXTURE_2D, 0);
