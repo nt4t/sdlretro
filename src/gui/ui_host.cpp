@@ -124,7 +124,6 @@ bool ui_host::global_settings_menu(menu_base *parent) {
                     return false;
                 }
             },
-#if SDLRETRO_FRONTEND == 2
             {menu_boolean, "Integer Scaling"_i18n, "", static_cast<size_t>(g_cfg.get_integer_scaling() ? 1 : 0),
                 {},
                 [&](const menu_item &item) -> bool {
@@ -133,6 +132,7 @@ bool ui_host::global_settings_menu(menu_base *parent) {
                     return false;
                 }
             },
+#if SDLRETRO_FRONTEND == 2
             {menu_boolean, "Linear Rendering"_i18n, "", static_cast<size_t>(g_cfg.get_linear() ? 1 : 0),
                 {},
                 [&](const menu_item &item) -> bool {
