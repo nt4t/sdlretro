@@ -402,14 +402,23 @@ void sdl2_video::get_text_width_and_height(const char *text, int &w, int &t, int
     while (*text != 0) {
         uint32_t ch = helper::utf8_to_ucs4(text);
         if (ch == 0 || ch > 0xFFFFu) continue;
-        uint8_t width;
-        int8_t tt, tb;
-        ttf[0]->get_char_width_and_height(ch, width, tt, tb);
-        if (width) {
-            w += width;
-            if (tt < t) t = tt;
-            if (tb > b) b = tb;
+        uint8_t c = static_cast<uint8_t>(ch);
+        if (c > 0x7F) {
+            // Fall back to TTF for non-ASCII
+            uint8_t width;
+            int8_t tt, tb;
+            ttf[0]->get_char_width_and_height(ch, width, tt, tb);
+            if (width) {
+                w += width;
+                if (tt < t) t = tt;
+                if (tb > b) b = tb;
+            }
+            continue;
         }
+        const auto &fd = get_pixel_font_data(c);
+        w += fd.sw;
+        if (fd.y < t) t = fd.y;
+        if (fd.y + fd.h > b) b = fd.y + fd.h;
     }
 }
 
