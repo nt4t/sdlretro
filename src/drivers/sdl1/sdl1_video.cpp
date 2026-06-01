@@ -97,8 +97,10 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                 if (screen_w > 0 && screen_h > 0) {
                     int scale_x = screen_w / width;
                     int scale_y = screen_h / height;
-                    scale = (scale_x < scale_y) ? scale_x : scale_y;
-                    if (scale < 1) scale = 1;
+                    int int_scale = (scale_x < scale_y) ? scale_x : scale_y;
+                    if (int_scale < 1) int_scale = 1;
+                    if (int_scale > scale) int_scale = scale;
+                    scale = int_scale;
                 }
             }
             current_scale = scale;
