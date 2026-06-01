@@ -116,6 +116,8 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     } else {
         curr_width = (int)width;
         curr_height = (int)height;
+        current_scale = 1;
+        curr_pixel_format = pixel_format;
     }
     return true;
 }
