@@ -112,6 +112,13 @@ bool ui_host::global_settings_menu(menu_base *parent) {
             },
 #endif
 #if SDLRETRO_FRONTEND == 2
+            {menu_values, "Scale Factor"_i18n, "", g_cfg.get_scale() - 1,
+                {"1x"_i18n, "2x"_i18n, "3x"_i18n, "4x"_i18n, "5x"_i18n},
+                [](const menu_item &item) -> bool {
+                    g_cfg.set_scale(item.selected + 1);
+                    return false;
+                }
+            },
             {menu_boolean, "Fullscreen"_i18n, "", static_cast<size_t>(g_cfg.get_fullscreen() ? 1 : 0),
                 {},
                 [&](const menu_item &item) -> bool {
