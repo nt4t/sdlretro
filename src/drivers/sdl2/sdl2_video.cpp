@@ -688,6 +688,7 @@ bool sdl2_video::recalc_draw_rect(bool force_create_empty_texture) {
      *       so we just use w/h here */
     float sratio = (float)curr_width / (float)curr_height;
     float wratio, hratio;
+    int scale = g_cfg.get_scale();
     if (g_cfg.get_integer_scaling()) {
         float int_ratio;
         if (sratio < ratio) {
@@ -695,15 +696,26 @@ bool sdl2_video::recalc_draw_rect(bool force_create_empty_texture) {
         } else {
             int_ratio = std::floor((float)curr_height / (float)game_height);
         }
+        if (int_ratio > scale) int_ratio = scale;
+        if (int_ratio < 1) int_ratio = 1;
         wratio = int_ratio * (float)game_width / (float)curr_width;
         hratio = int_ratio * (float)game_height / (float)curr_height;
     } else {
+        float target_scale = scale;
         if (sratio < ratio) {
             wratio = 1.f;
             hratio = (float)curr_width / ratio / (float)curr_height;
+            if (hratio * target_scale > 1.f) {
+                wratio = 1.f / target_scale;
+                hratio = 1.f;
+            }
         } else {
             wratio = ratio * (float)curr_height / (float)curr_width;
             hratio = 1.f;
+            if (wratio * target_scale > 1.f) {
+                wratio = 1.f;
+                hratio = 1.f / target_scale;
+            }
         }
     }
     return gl_renderer_resized(wratio, hratio);
