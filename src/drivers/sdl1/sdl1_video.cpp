@@ -115,9 +115,21 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         SDL_LockSurface(screen);
         screen_ptr = screen->pixels;
     } else {
+        int scale = force_scale == 0 ? g_cfg.get_scale() : force_scale;
+        if (g_cfg.get_integer_scaling()) {
+            int screen_w = screen->w;
+            int screen_h = screen->h;
+            if (screen_w > 0 && screen_h > 0) {
+                int scale_x = screen_w / width;
+                int scale_y = screen_h / height;
+                int int_scale = (scale_x < scale_y) ? scale_x : scale_y;
+                if (int_scale < 1) int_scale = 1;
+                if (scale > int_scale) scale = int_scale;
+            }
+        }
+        current_scale = scale;
         curr_width = (int)width;
         curr_height = (int)height;
-        current_scale = 1;
         curr_pixel_format = pixel_format;
     }
     return true;
