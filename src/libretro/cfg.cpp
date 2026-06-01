@@ -91,7 +91,10 @@ inline bool get_value(json &j, const std::string &key, T &val) {
 void cfg::load(const std::string &cfgfile) {
     json j;
     config_filename = cfgfile.empty() ? config_dir + PATH_SEPARATOR_CHAR + "sdlretro.json" : cfgfile;
-    if (!helper::file_exists(config_filename)) return;
+    if (!helper::file_exists(config_filename)) {
+        save();
+        return;
+    }
     try {
         std::string content;
         if (!helper::read_file(config_filename, content)) {
