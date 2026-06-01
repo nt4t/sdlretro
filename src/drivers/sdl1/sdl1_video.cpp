@@ -116,7 +116,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         screen_ptr = screen->pixels;
     } else {
         int scale = force_scale == 0 ? g_cfg.get_scale() : force_scale;
-        if (g_cfg.get_integer_scaling()) {
+        if (g_cfg.get_integer_scaling() && width > 0 && height > 0) {
             int screen_w = screen->w;
             int screen_h = screen->h;
             if (screen_w > 0 && screen_h > 0) {
