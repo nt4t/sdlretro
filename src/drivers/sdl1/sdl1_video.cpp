@@ -269,7 +269,6 @@ void sdl1_video::fill_rectangle(int x, int y, int w, int h) {
 }
 
 void sdl1_video::draw_text(int x, int y, const char *text, int width, bool shadow) {
-    LOG(INFO, "draw_text: ttf_valid={}, text='{}'", ttf[0] ? 1 : 0, text);
     draw_text_pixel(x, y, text, width, shadow);
 }
 
