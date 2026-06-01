@@ -11,6 +11,8 @@
 
 #include "core.h"
 
+#include "bmfont.inl"
+
 #include <glad/glad.h>
 #include <SDL.h>
 
@@ -81,6 +83,7 @@ sdl2_video::sdl2_video(): saved_x(SDL_WINDOWPOS_CENTERED), saved_y(SDL_WINDOWPOS
 }
 
 sdl2_video::~sdl2_video() {
+    deinit_glyph_cache();
     deinit_video();
 }
 
@@ -346,7 +349,48 @@ void sdl2_video::fill_rectangle(int x, int y, int w, int h) {
 void sdl2_video::draw_text(int x, int y, const char *text, int width, bool shadow) {
     if (width == 0) width = curr_width - x;
     else if (width < 0) width = x - curr_width;
-    ttf[0]->render(x, y, text, width, curr_height + ttf[0]->get_font_size() - y, shadow);
+    
+    bool allow_wrap = false;
+    int nwidth;
+    int ox = x;
+    if (width == 0) {
+        nwidth = width = curr_width - x;
+    } else if (width == -1) {
+        nwidth = width = curr_width - x;
+        allow_wrap = true;
+    } else {
+        if (width < 0) {
+            allow_wrap = true;
+            width = -width;
+            nwidth = width;
+        } else {
+            nwidth = width;
+        }
+    }
+    
+    if (!glyph_cache_initialized) {
+        init_glyph_cache();
+    }
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    while (*text) {
+        uint8_t c = static_cast<uint8_t>(*text++);
+        if (c > 0x7F) continue;
+        const auto &fd = get_pixel_font_data(c);
+        if (fd.sw > nwidth) {
+            if (!allow_wrap) break;
+            x = ox;
+            nwidth = width;
+            y += 16 + 1;
+        }
+        nwidth -= fd.sw;
+        render_glyph_pixel(c, x, y, curr_width, shadow);
+        x += fd.sw;
+    }
+    
+    glDisable(GL_BLEND);
 }
 
 void sdl2_video::get_text_width_and_height(const char *text, int &w, int &t, int &b) const {
@@ -498,6 +542,8 @@ void sdl2_video::init_fonts() {
     ttf[0]->add(g_cfg.get_data_dir() + PATH_SEPARATOR_CHAR + "fonts" + PATH_SEPARATOR_CHAR + "regular.ttf", 0);
     ttf[1]->init(size, 0);
     ttf[1]->add(g_cfg.get_data_dir() + PATH_SEPARATOR_CHAR + "fonts" + PATH_SEPARATOR_CHAR + "bold.ttf", 0);
+    
+    init_glyph_cache();
 }
 
 void sdl2_video::init_opengl() {
@@ -813,6 +859,120 @@ bool sdl2_video::gl_renderer_gen_texture(const void *data, size_t pitch) const {
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     return true;
+}
+
+inline const font_data_t &get_pixel_font_data(uint8_t c) {
+    return font_big_data[c];
+}
+
+void sdl2_video::init_glyph_cache() {
+    if (glyph_cache_initialized) return;
+    
+    for (int c = 0; c < 128; c++) {
+        const auto &fd = get_pixel_font_data(c);
+        if (fd.w == 0 || fd.h == 0) continue;
+        
+        glyph_cache[c].width = fd.w;
+        glyph_cache[c].height = fd.h;
+        glyph_cache[c].x_offset = fd.x;
+        glyph_cache[c].y_offset = fd.y;
+        glyph_cache[c].valid = true;
+        
+        size_t pixel_size = sizeof(uint32_t);
+        glyph_cache[c].pixels = new uint8_t[fd.w * fd.h * pixel_size];
+        
+        uint8_t *dest = glyph_cache[c].pixels;
+        const uint8_t *fontdata = fd.data;
+        uint32_t step = (fd.w + 7) >> 3;
+        
+        for (int y = 0; y < fd.h; y++) {
+            uint8_t bitflag = 0x01;
+            uint32_t fdidx = 0;
+            for (int x = 0; x < fd.w; x++) {
+                uint32_t pixel = 0;
+                if (fontdata[fdidx] & bitflag) {
+                    pixel = 0xFFFFFFFF;
+                }
+                memcpy(dest, &pixel, pixel_size);
+                dest += pixel_size;
+                if (bitflag == 0x80) {
+                    fdidx++;
+                    bitflag = 1;
+                } else {
+                    bitflag <<= 1;
+                }
+            }
+            fontdata += step;
+        }
+        
+        glGenTextures(1, &glyph_cache[c].texture_id);
+        glBindTexture(GL_TEXTURE_2D, glyph_cache[c].texture_id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fd.w, fd.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, glyph_cache[c].pixels);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    glyph_cache_initialized = true;
+}
+
+void sdl2_video::deinit_glyph_cache() {
+    if (!glyph_cache_initialized) return;
+    
+    for (int c = 0; c < 128; c++) {
+        if (glyph_cache[c].pixels) {
+            delete[] glyph_cache[c].pixels;
+            glyph_cache[c].pixels = nullptr;
+        }
+        if (glyph_cache[c].texture_id) {
+            glDeleteTextures(1, &glyph_cache[c].texture_id);
+            glyph_cache[c].texture_id = 0;
+        }
+        glyph_cache[c].valid = false;
+    }
+    glyph_cache_initialized = false;
+}
+
+void sdl2_video::render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool shadow) {
+    if (!glyph_cache[c].valid) return;
+    
+    int gw = glyph_cache[c].width;
+    int gh = glyph_cache[c].height;
+    int gx = glyph_cache[c].x_offset;
+    int gy = glyph_cache[c].y_offset;
+    
+    float nx = static_cast<float>(x + gx);
+    float ny = static_cast<float>(y + gy);
+    float nw = static_cast<float>(gw);
+    float nh = static_cast<float>(gh);
+    
+    float u1 = 0.0f, v1 = 0.0f;
+    float u2 = 1.0f, v2 = 1.0f;
+    
+    float vertices[] = {
+        nx, ny, u1, v1,
+        nx + nw, ny, u2, v1,
+        nx, ny + nh, u1, v2,
+        nx + nw, ny + nh, u2, v2
+    };
+    
+    GLuint vao, vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    glBindTexture(GL_TEXTURE_2D, glyph_cache[c].texture_id);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    
+    glBindVertexArray(0);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
 }
 
 }

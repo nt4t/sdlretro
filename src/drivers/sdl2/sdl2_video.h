@@ -93,6 +93,22 @@ private:
     /* indicate wheather frame was drawn, for auto frameskip use */
     bool drawn = false;
 
+    /* bitmap font glyph cache */
+    struct glyph_cache_entry {
+        uint8_t *pixels = nullptr;
+        int width = 0;
+        int height = 0;
+        int x_offset = 0;
+        int y_offset = 0;
+        bool valid = false;
+        uint32_t texture_id = 0;
+    };
+    glyph_cache_entry glyph_cache[128];
+    bool glyph_cache_initialized = false;
+    void init_glyph_cache();
+    void deinit_glyph_cache();
+    void render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool shadow);
+
     retro_hw_render_callback *hwr_cb = nullptr;
 
     struct {
