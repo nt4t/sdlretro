@@ -160,6 +160,13 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     if (curr_width != width || curr_height != height) {
         game_resolution_changed(width, height, 0, 0, curr_pixel_format);
     }
+    if (width <= 0 || height <= 0 || pitch == 0) {
+        return;
+    }
+    int screen_bytes = screen->w * screen->h * (screen->format->BitsPerPixel >> 3);
+    if (static_cast<size_t>(height) * pitch > static_cast<size_t>(screen_bytes)) {
+        return;
+    }
     int h = static_cast<int>(height);
     int scale = current_scale;
     unsigned input_bpp = (pitch > 0 && width > 0) ? (pitch / width) * 8 : 16;
@@ -170,12 +177,18 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         const auto *input = static_cast<const uint8_t *>(data);
         int output_pitch = screen->pitch;
         int input_row_bytes = static_cast<int>(pitch);
+        int max_height = screen_bytes / output_pitch;
+        if (h > max_height) h = max_height;
         int output_row_bytes = width * (output_bpp >> 3);
+        int max_copy_bytes = output_row_bytes;
+        if (input_row_bytes < max_copy_bytes) max_copy_bytes = input_row_bytes;
         if (input_bpp == 32 && output_bpp == 16) {
             for (; h > 0; h--) {
                 const uint32_t *src = (const uint32_t*)input;
                 uint16_t *dst = (uint16_t*)pixels;
-                for (int x = 0; x < width; x++) {
+                int pixels_per_row = max_copy_bytes >> 1;
+                if (pixels_per_row > width) pixels_per_row = width;
+                for (int x = 0; x < pixels_per_row; x++) {
                     uint32_t p = src[x];
                     uint16_t r = (p >> 16) & 0x1F;
                     uint16_t g = (p >> 8) & 0x3F;
@@ -186,15 +199,15 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                 input += input_row_bytes;
             }
         } else if (input_bpp == 16 && output_bpp == 16) {
-            int copy_bytes = (input_row_bytes < output_pitch) ? input_row_bytes : output_row_bytes;
             for (; h > 0; h--) {
-                memcpy(pixels, input, copy_bytes);
+                memcpy(pixels, input, max_copy_bytes);
                 pixels += output_pitch;
                 input += input_row_bytes;
             }
         } else {
-            int line_bytes = (width * (input_bpp >> 3)) ;
-            int copy_bytes = (line_bytes < input_row_bytes) ? line_bytes : input_row_bytes;
+            int line_bytes = width * (input_bpp >> 3);
+            int copy_bytes = line_bytes;
+            if (copy_bytes > max_copy_bytes) copy_bytes = max_copy_bytes;
             for (; h > 0; h--) {
                 memcpy(pixels, input, copy_bytes);
                 pixels += output_pitch;
