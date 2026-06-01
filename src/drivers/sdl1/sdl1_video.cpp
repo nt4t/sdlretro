@@ -164,8 +164,9 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     int scale = current_scale;
     unsigned input_bpp = (pitch > 0 && width > 0) ? (pitch / width) * 8 : 16;
     unsigned output_bpp = screen->format->BitsPerPixel;
-    LOG(TRACE, "Render: game={}x{} pitch={} input_bpp={} curr_pixel_format={} output_bpp={} scale={} mode={}", 
-        width, height, pitch, input_bpp, curr_pixel_format, output_bpp, scale, g_cfg.get_scaling_mode());
+    LOG(TRACE, "Render: game={}x{} pitch={} input_bpp={} curr_pixel_format={} output_bpp={} scale={} mode={} Rmask=0x{:08X} Gmask=0x{:08X} Bmask=0x{:08X}",
+        width, height, pitch, input_bpp, curr_pixel_format, output_bpp, scale, g_cfg.get_scaling_mode(),
+        screen->format->Rmask, screen->format->Gmask, screen->format->Bmask);
     
     int offset_x = 0;
     int offset_y = 0;
