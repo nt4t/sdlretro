@@ -82,8 +82,14 @@ private:
     glyph_cache_entry glyph_cache[128];
     bool glyph_cache_initialized = false;
 
+    /* pre-allocated scaling buffers */
+    uint16_t *h_line_16 = nullptr;
+    uint32_t *h_line_32 = nullptr;
+    int h_line_max_width = 0;
+
     void init_glyph_cache();
     void deinit_glyph_cache();
+    void ensure_h_line_buffer(int width);
 };
 
 }

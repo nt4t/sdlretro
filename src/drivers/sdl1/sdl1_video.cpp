@@ -46,11 +46,26 @@ sdl1_video::sdl1_video() {
         glyph_cache[i].valid = false;
     }
     glyph_cache_initialized = false;
+
+    h_line_16 = nullptr;
+    h_line_32 = nullptr;
+    h_line_max_width = 0;
 }
 
 sdl1_video::~sdl1_video() {
     deinit_glyph_cache();
+    free(h_line_16);
+    free(h_line_32);
     SDL_UnlockSurface(screen);
+}
+
+void sdl1_video::ensure_h_line_buffer(int width) {
+    if (width <= h_line_max_width) return;
+    free(h_line_16);
+    free(h_line_32);
+    h_line_16 = (uint16_t*)malloc(width * sizeof(uint16_t));
+    h_line_32 = (uint32_t*)malloc(width * sizeof(uint32_t));
+    h_line_max_width = width;
 }
 
   void sdl1_video::window_resized(int width, int height, bool fullscreen) {
@@ -211,73 +226,88 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                 input += input_row_bytes;
             }
         }
-    } else if (scale > 0) {
-    #define CODE_WITH_TYPE(TYPE) \
-        int output_pitch = screen->pitch / sizeof(TYPE); \
-        const TYPE *input_data = static_cast<const TYPE*>(data); \
-        TYPE *pixels = static_cast<TYPE*>(screen_ptr); \
-        int src_pitch = pitch / sizeof(TYPE); \
-        int scaled_width = width * scale; \
-        int scaled_height = height * scale; \
-        TYPE *h_line = (TYPE*)malloc(scaled_width * sizeof(TYPE)); \
-        if (h_line) { \
-            TYPE *dest = pixels; \
-            int dest_pitch = output_pitch; \
-            for (int y = 0; y < height; y++) { \
-                int x = 0; \
-                for (int i = 0; i < width; i++) { \
-                    TYPE pix = input_data[i]; \
-                    for (int j = 0; j < scale; j++) { \
-                        h_line[x++] = pix; \
-                    } \
-                } \
-                input_data += src_pitch; \
-                for (int v = 0; v < scale; v++) { \
-                    memcpy(dest, h_line, scaled_width * sizeof(TYPE)); \
-                    dest += dest_pitch; \
-                } \
-            } \
-            free(h_line); \
-        }
-    #define CODE_WITH_TYPE_CONVERT(TYPE_IN, TYPE_OUT) \
-        int output_pitch = screen->pitch / sizeof(TYPE_OUT); \
-        const TYPE_IN *input_data = static_cast<const TYPE_IN*>(data); \
-        TYPE_OUT *pixels = static_cast<TYPE_OUT*>(screen_ptr); \
-        int src_pitch = pitch / sizeof(TYPE_IN); \
-        int scaled_width = width * scale; \
-        int scaled_height = height * scale; \
-        TYPE_OUT *h_line = (TYPE_OUT*)malloc(scaled_width * sizeof(TYPE_OUT)); \
-        if (h_line) { \
-            TYPE_OUT *dest = pixels; \
-            int dest_pitch = output_pitch; \
-            for (int y = 0; y < height; y++) { \
-                int x = 0; \
-                for (int i = 0; i < width; i++) { \
-                    uint32_t p = input_data[i]; \
-                    uint16_t r = ((p >> 16) & 0xFF) * 31 / 255; \
-                    uint16_t g = ((p >> 8) & 0xFF) * 63 / 255; \
-                    uint16_t b = (p & 0xFF) * 31 / 255; \
-                    TYPE_OUT pix = (TYPE_OUT)((r << 11) | (g << 5) | b); \
-                    for (int j = 0; j < scale; j++) { \
-                        h_line[x++] = pix; \
-                    } \
-                } \
-                input_data += src_pitch; \
-                for (int v = 0; v < scale; v++) { \
-                    memcpy(dest, h_line, scaled_width * sizeof(TYPE_OUT)); \
-                    dest += dest_pitch; \
-                } \
-            } \
-            free(h_line); \
-        }
+  } else if (scale > 0) {
+        ensure_h_line_buffer(width * scale);
         if (input_bpp == 32 && output_bpp == 16) {
-            CODE_WITH_TYPE_CONVERT(uint32_t, uint16_t)
+            int output_pitch = screen->pitch / sizeof(uint16_t);
+            const uint32_t *input_data = static_cast<const uint32_t*>(data);
+            uint16_t *pixels = static_cast<uint16_t*>(screen_ptr);
+            int src_pitch = pitch / sizeof(uint32_t);
+            int scaled_width = width * scale;
+            uint16_t *h_line = h_line_16;
+            if (h_line) {
+                uint16_t *dest = pixels;
+                int dest_pitch = output_pitch;
+                for (int y = 0; y < height; y++) {
+                    int x = 0;
+                    for (int i = 0; i < width; i++) {
+                        uint32_t p = input_data[i];
+                        uint16_t r = (p >> 16) & 0x1F;
+                        uint16_t g = (p >> 8) & 0x3F;
+                        uint16_t b = p & 0x1F;
+                        uint16_t pix = (r << 11) | (g << 5) | b;
+                        for (int j = 0; j < scale; j++) {
+                            h_line[x++] = pix;
+                        }
+                    }
+                    input_data += src_pitch;
+                    for (int v = 0; v < scale; v++) {
+                        memcpy(dest, h_line, scaled_width * sizeof(uint16_t));
+                        dest += dest_pitch;
+                    }
+                }
+            }
         } else if (output_bpp == 32) {
-            CODE_WITH_TYPE(uint32_t)
+            int output_pitch = screen->pitch / sizeof(uint32_t);
+            const uint32_t *input_data = static_cast<const uint32_t*>(data);
+            uint32_t *pixels = static_cast<uint32_t*>(screen_ptr);
+            int src_pitch = pitch / sizeof(uint32_t);
+            int scaled_width = width * scale;
+            uint32_t *h_line = h_line_32;
+            if (h_line) {
+                uint32_t *dest = pixels;
+                int dest_pitch = output_pitch;
+                for (int y = 0; y < height; y++) {
+                    int x = 0;
+                    for (int i = 0; i < width; i++) {
+                        uint32_t pix = input_data[i];
+                        for (int j = 0; j < scale; j++) {
+                            h_line[x++] = pix;
+                        }
+                    }
+                    input_data += src_pitch;
+                    for (int v = 0; v < scale; v++) {
+                        memcpy(dest, h_line, scaled_width * sizeof(uint32_t));
+                        dest += dest_pitch;
+                    }
+                }
+            }
         } else {
-            CODE_WITH_TYPE(uint16_t)
+            int output_pitch = screen->pitch / sizeof(uint16_t);
+            const uint16_t *input_data = static_cast<const uint16_t*>(data);
+            uint16_t *pixels = static_cast<uint16_t*>(screen_ptr);
+            int src_pitch = pitch / sizeof(uint16_t);
+            int scaled_width = width * scale;
+            uint16_t *h_line = h_line_16;
+            if (h_line) {
+                uint16_t *dest = pixels;
+                int dest_pitch = output_pitch;
+                for (int y = 0; y < height; y++) {
+                    int x = 0;
+                    for (int i = 0; i < width; i++) {
+                        uint16_t pix = input_data[i];
+                        for (int j = 0; j < scale; j++) {
+                            h_line[x++] = pix;
+                        }
+                    }
+                    input_data += src_pitch;
+                    for (int v = 0; v < scale; v++) {
+                        memcpy(dest, h_line, scaled_width * sizeof(uint16_t));
+                        dest += dest_pitch;
+                    }
+                }
+            }
         }
-    #undef CODE_WITH_TYPE
     }
     if (!messages.empty()) {
         uint32_t lh = get_font_size() + 2;
