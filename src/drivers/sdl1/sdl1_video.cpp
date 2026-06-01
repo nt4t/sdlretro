@@ -169,10 +169,10 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         auto *pixels = static_cast<uint8_t *>(screen_ptr);
         const auto *input = static_cast<const uint8_t *>(data);
         int output_pitch = screen->pitch;
-        if (output_pitch == pitch && input_bpp == output_bpp) {
-            memcpy(pixels, input, h * pitch);
-        } else if (input_bpp == 32 && output_bpp == 16) {
-            for (; h; h--) {
+        int input_row_bytes = static_cast<int>(pitch);
+        int output_row_bytes = width * (output_bpp >> 3);
+        if (input_bpp == 32 && output_bpp == 16) {
+            for (; h > 0; h--) {
                 const uint32_t *src = (const uint32_t*)input;
                 uint16_t *dst = (uint16_t*)pixels;
                 for (int x = 0; x < width; x++) {
@@ -183,14 +183,22 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                     dst[x] = (r << 11) | (g << 5) | b;
                 }
                 pixels += output_pitch;
-                input += pitch;
+                input += input_row_bytes;
+            }
+        } else if (input_bpp == 16 && output_bpp == 16) {
+            int copy_bytes = (input_row_bytes < output_pitch) ? input_row_bytes : output_row_bytes;
+            for (; h > 0; h--) {
+                memcpy(pixels, input, copy_bytes);
+                pixels += output_pitch;
+                input += input_row_bytes;
             }
         } else {
-            int line_bytes = width*(input_bpp >> 3);
-            for (; h; h--) {
-                memcpy(pixels, input, line_bytes);
+            int line_bytes = (width * (input_bpp >> 3)) ;
+            int copy_bytes = (line_bytes < input_row_bytes) ? line_bytes : input_row_bytes;
+            for (; h > 0; h--) {
+                memcpy(pixels, input, copy_bytes);
                 pixels += output_pitch;
-                input += pitch;
+                input += input_row_bytes;
             }
         }
     } else if (scale > 0) {
