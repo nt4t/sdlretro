@@ -165,69 +165,11 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     unsigned input_bpp = (pitch > 0 && width > 0) ? (pitch / width) * 8 : 16;
     unsigned output_bpp = screen->format->BitsPerPixel;
     
-    int offset_x = 0;
-    int offset_y = 0;
-    if (g_cfg.get_scaling_mode() == 1 && scale > 0) {
-        int scaled_w = width * scale;
-        int scaled_h = height * scale;
-        offset_x = (screen->w - scaled_w) / 2;
-        offset_y = (screen->h - scaled_h) / 2;
-       if (offset_x < 0) offset_x = 0;
-        if (offset_y < 0) offset_y = 0;
-        
-        if (output_bpp == 32) {
-            uint32_t black = 0xFF000000;
-            uint32_t *clear_ptr = (uint32_t*)screen_ptr;
-            size_t clear_count = (size_t)screen->w * screen->h;
-            for (size_t i = 0; i < clear_count; i++) {
-                clear_ptr[i] = black;
-            }
-        } else {
-            uint16_t black = 0x0000;
-            uint16_t *clear_ptr = (uint16_t*)screen_ptr;
-            size_t clear_count = (size_t)screen->w * screen->h;
-            for (size_t i = 0; i < clear_count; i++) {
-                clear_ptr[i] = black;
-            }
-        }
-    }
-    
     if (scale == 1) {
         auto *pixels = static_cast<uint8_t *>(screen_ptr);
         const auto *input = static_cast<const uint8_t *>(data);
         int output_pitch = screen->pitch;
-        if (offset_x > 0 || offset_y > 0) {
-            uint8_t *dest = pixels + offset_y * output_pitch + offset_x * (output_bpp >> 3);
-            if (input_bpp == output_bpp) {
-                int line_bytes = width*(input_bpp >> 3);
-                for (; h; h--) {
-                    memcpy(dest, input, line_bytes);
-                    dest += output_pitch;
-                    input += pitch;
-                }
-            } else if (input_bpp == 32 && output_bpp == 16) {
-                for (; h; h--) {
-                    const uint32_t *src = (const uint32_t*)input;
-                    uint16_t *dst = (uint16_t*)dest;
-                    for (int x = 0; x < width; x++) {
-                        uint32_t p = src[x];
-                        uint16_t r = ((p >> 16) & 0xFF) * 31 / 255;
-                        uint16_t g = ((p >> 8) & 0xFF) * 63 / 255;
-                        uint16_t b = (p & 0xFF) * 31 / 255;
-                        dst[x] = (r << 11) | (g << 5) | b;
-                    }
-                    dest += output_pitch;
-                    input += pitch;
-                }
-            } else {
-                int line_bytes = width*(input_bpp >> 3);
-                for (; h; h--) {
-                    memcpy(dest, input, line_bytes);
-                    dest += output_pitch;
-                    input += pitch;
-                }
-            }
-        } else if (output_pitch == pitch && input_bpp == output_bpp) {
+        if (output_pitch == pitch && input_bpp == output_bpp) {
             memcpy(pixels, input, h * pitch);
         } else if (input_bpp == 32 && output_bpp == 16) {
             for (; h; h--) {
@@ -261,7 +203,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         int scaled_height = height * scale; \
         TYPE *h_line = (TYPE*)malloc(scaled_width * sizeof(TYPE)); \
         if (h_line) { \
-            TYPE *dest = pixels + offset_y * output_pitch + offset_x; \
+            TYPE *dest = pixels; \
             int dest_pitch = output_pitch; \
             for (int y = 0; y < height; y++) { \
                 int x = 0; \
@@ -288,7 +230,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         int scaled_height = height * scale; \
         TYPE_OUT *h_line = (TYPE_OUT*)malloc(scaled_width * sizeof(TYPE_OUT)); \
         if (h_line) { \
-            TYPE_OUT *dest = pixels + offset_y * output_pitch + offset_x; \
+            TYPE_OUT *dest = pixels; \
             int dest_pitch = output_pitch; \
             for (int y = 0; y < height; y++) { \
                 int x = 0; \
