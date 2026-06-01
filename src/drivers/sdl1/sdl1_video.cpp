@@ -40,9 +40,10 @@ sdl1_video::sdl1_video() {
     LOG(INFO, "SDL1 font[1] loaded: {}", ttf[1]->is_valid() ? "yes" : "no");
 
     for (int i = 0; i < 128; i++) {
-        glyph_cache[i].surface = nullptr;
+        glyph_cache[i].pixels = nullptr;
         glyph_cache[i].width = 0;
         glyph_cache[i].height = 0;
+        glyph_cache[i].valid = false;
     }
     glyph_cache_initialized = false;
 }
