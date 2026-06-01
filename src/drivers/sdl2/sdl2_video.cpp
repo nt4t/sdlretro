@@ -393,8 +393,6 @@ void sdl2_video::draw_text(int x, int y, const char *text, int width, bool shado
         render_glyph_pixel(c, x, y, curr_width, shadow);
         x += fd.sw;
     }
-    
-    glDisable(GL_BLEND);
 }
 
 void sdl2_video::get_text_width_and_height(const char *text, int &w, int &t, int &b) const {
