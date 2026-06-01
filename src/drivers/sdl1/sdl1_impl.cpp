@@ -5,6 +5,7 @@
 #include "sdl1_input.h"
 #include "sdl1_ttf.h"
 #include "throttle.h"
+#include "logger.h"
 
 #include <core.h>
 #include <cfg.h>
@@ -23,6 +24,7 @@ sdl1_impl::sdl1_impl() {
     video = std::make_shared<sdl1_video>();
     input = std::make_shared<sdl1_input>();
     input->post_init();
+    LOG(INFO, "Render backend: SDL1");
 }
 
 sdl1_impl::~sdl1_impl() {
