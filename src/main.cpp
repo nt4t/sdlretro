@@ -22,8 +22,17 @@
 #define DEFAULT_DATA_DIR "."
 #ifdef GCW_ZERO
 #define DEFAULT_STORE_DIR "/usr/local/home/.sdlretro"
+#elif defined(__linux__) || defined(__unix__)
+#include <cstdlib>
+static std::string get_default_store_dir() {
+    const char *home = getenv("HOME");
+    if (home) {
+        return std::string(home) + "/.config/sdlretro";
+    }
+    return "./sdlretro";
+}
 #else
-#define DEFAULT_STORE_DIR "."
+#define DEFAULT_STORE_DIR "./sdlretro"
 #endif
 
 int program(int argc, char *argv[]) {
@@ -62,15 +71,21 @@ int program(int argc, char *argv[]) {
     }
     const char *rom_filename = argv[optind];
 
+#ifdef __linux__
+    std::string default_store_dir = get_default_store_dir();
+#else
+    const char *default_store_dir = DEFAULT_STORE_DIR;
+#endif
+
     if (config_filename) {
         g_cfg.load(config_filename);
         if (g_cfg.get_data_dir().empty())
             g_cfg.set_data_dir(DEFAULT_DATA_DIR);
         if (g_cfg.get_store_dir().empty())
-            g_cfg.set_store_dir(DEFAULT_STORE_DIR);
+            g_cfg.set_store_dir(default_store_dir);
     } else {
         g_cfg.set_data_dir(DEFAULT_DATA_DIR);
-        g_cfg.set_store_dir(DEFAULT_STORE_DIR);
+        g_cfg.set_store_dir(default_store_dir);
         g_cfg.load("");
     }
 
