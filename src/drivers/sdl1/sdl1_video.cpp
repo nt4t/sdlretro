@@ -169,9 +169,6 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     unsigned output_bpp = screen->format->BitsPerPixel;
     int screen_bytes = screen->w * screen->h * (output_bpp >> 3);
     
-    LOG(TRACE, "Render: game={}x{} pitch={} input_bpp={} screen={}x{} output_bpp={} scale={}",
-        width, height, pitch, input_bpp, screen->w, screen->h, output_bpp, scale);
-    
     if (scale == 1) {
         auto *pixels = static_cast<uint8_t *>(screen_ptr);
         const auto *input = static_cast<const uint8_t *>(data);
