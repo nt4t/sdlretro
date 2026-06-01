@@ -197,13 +197,12 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         const auto *input = static_cast<const uint8_t *>(data);
         int output_pitch = screen->pitch;
         if (offset_x > 0 || offset_y > 0) {
-            int dest_pitch = output_pitch + offset_x * (output_bpp >> 3);
             uint8_t *dest = pixels + offset_y * output_pitch + offset_x * (output_bpp >> 3);
             if (input_bpp == output_bpp) {
                 int line_bytes = width*(input_bpp >> 3);
                 for (; h; h--) {
                     memcpy(dest, input, line_bytes);
-                    dest += dest_pitch;
+                    dest += output_pitch;
                     input += pitch;
                 }
             } else if (input_bpp == 32 && output_bpp == 16) {
@@ -217,14 +216,14 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
                         uint16_t b = (p & 0xFF) * 31 / 255;
                         dst[x] = (r << 11) | (g << 5) | b;
                     }
-                    dest += dest_pitch;
+                    dest += output_pitch;
                     input += pitch;
                 }
             } else {
                 int line_bytes = width*(input_bpp >> 3);
                 for (; h; h--) {
                     memcpy(dest, input, line_bytes);
-                    dest += dest_pitch;
+                    dest += output_pitch;
                     input += pitch;
                 }
             }
