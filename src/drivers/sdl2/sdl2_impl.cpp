@@ -1,5 +1,6 @@
 #include "sdl2_impl.h"
 
+#include <cfg.h>
 #include "sdl2_video.h"
 #include "sdl2_audio.h"
 #include "sdl2_input.h"
