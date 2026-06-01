@@ -199,16 +199,53 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         const auto *input = static_cast<const uint8_t *>(data);
         int output_pitch = screen->pitch;
         if (offset_x > 0 || offset_y > 0) {
-            int line_bytes = width*(input_bpp >> 3);
             int dest_pitch = output_pitch + offset_x * (output_bpp >> 3);
             uint8_t *dest = pixels + offset_y * output_pitch + offset_x * (output_bpp >> 3);
+            if (input_bpp == output_bpp) {
+                int line_bytes = width*(input_bpp >> 3);
+                for (; h; h--) {
+                    memcpy(dest, input, line_bytes);
+                    dest += dest_pitch;
+                    input += pitch;
+                }
+            } else if (input_bpp == 32 && output_bpp == 16) {
+                for (; h; h--) {
+                    const uint32_t *src = (const uint32_t*)input;
+                    uint16_t *dst = (uint16_t*)dest;
+                    for (int x = 0; x < width; x++) {
+                        uint32_t p = src[x];
+                        uint16_t r = (p >> 16) & 0x1F;
+                        uint16_t g = (p >> 8) & 0x3F;
+                        uint16_t b = p & 0x1F;
+                        dst[x] = (r << 11) | (g << 5) | b;
+                    }
+                    dest += dest_pitch;
+                    input += pitch;
+                }
+            } else {
+                int line_bytes = width*(input_bpp >> 3);
+                for (; h; h--) {
+                    memcpy(dest, input, line_bytes);
+                    dest += dest_pitch;
+                    input += pitch;
+                }
+            }
+        } else if (output_pitch == pitch && input_bpp == output_bpp) {
+            memcpy(pixels, input, h * pitch);
+        } else if (input_bpp == 32 && output_bpp == 16) {
             for (; h; h--) {
-                memcpy(dest, input, line_bytes);
-                dest += dest_pitch;
+                const uint32_t *src = (const uint32_t*)input;
+                uint16_t *dst = (uint16_t*)pixels;
+                for (int x = 0; x < width; x++) {
+                    uint32_t p = src[x];
+                    uint16_t r = (p >> 16) & 0x1F;
+                    uint16_t g = (p >> 8) & 0x3F;
+                    uint16_t b = p & 0x1F;
+                    dst[x] = (r << 11) | (g << 5) | b;
+                }
+                pixels += output_pitch;
                 input += pitch;
             }
-        } else if (output_pitch == pitch) {
-            memcpy(pixels, input, h * pitch);
         } else {
             int line_bytes = width*(input_bpp >> 3);
             for (; h; h--) {
@@ -245,7 +282,40 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
             } \
             free(h_line); \
         }
-        if (output_bpp == 32) {
+    #define CODE_WITH_TYPE_CONVERT(TYPE_IN, TYPE_OUT) \
+        int output_pitch = screen->pitch / sizeof(TYPE_OUT); \
+        const TYPE_IN *input_data = static_cast<const TYPE_IN*>(data); \
+        TYPE_OUT *pixels = static_cast<TYPE_OUT*>(screen_ptr); \
+        int src_pitch = pitch / sizeof(TYPE_IN); \
+        int scaled_width = width * scale; \
+        int scaled_height = height * scale; \
+        TYPE_OUT *h_line = (TYPE_OUT*)malloc(scaled_width * sizeof(TYPE_OUT)); \
+        if (h_line) { \
+            TYPE_OUT *dest = pixels + offset_y * output_pitch + offset_x; \
+            int dest_pitch = output_pitch; \
+            for (int y = 0; y < height; y++) { \
+                int x = 0; \
+                for (int i = 0; i < width; i++) { \
+                    uint32_t p = input_data[i]; \
+                    uint16_t r = (p >> 16) & 0x1F; \
+                    uint16_t g = (p >> 8) & 0x3F; \
+                    uint16_t b = p & 0x1F; \
+                    TYPE_OUT pix = (TYPE_OUT)((r << 11) | (g << 5) | b); \
+                    for (int j = 0; j < scale; j++) { \
+                        h_line[x++] = pix; \
+                    } \
+                } \
+                input_data += src_pitch; \
+                for (int v = 0; v < scale; v++) { \
+                    memcpy(dest, h_line, scaled_width * sizeof(TYPE_OUT)); \
+                    dest += dest_pitch; \
+                } \
+            } \
+            free(h_line); \
+        }
+        if (input_bpp == 32 && output_bpp == 16) {
+            CODE_WITH_TYPE_CONVERT(uint32_t, uint16_t)
+        } else if (output_bpp == 32) {
             CODE_WITH_TYPE(uint32_t)
         } else {
             CODE_WITH_TYPE(uint16_t)
