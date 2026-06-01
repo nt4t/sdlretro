@@ -219,7 +219,6 @@ bool sdl2_video::game_resolution_changed(int width, int height, int max_width, i
     if (pixel_format_changed) {
         game_pixel_format = pixel_format;
         bpp = pixel_format == 1 ? 4 : 2;
-        fprintf(stderr, "SDL2 core pixel format: %u (bpp=%u)\n", pixel_format, bpp);
     }
     recalc_draw_rect(pixel_format_changed);
     return true;
@@ -240,7 +239,6 @@ void sdl2_video::render(const void *data, int width, int height, size_t pitch) {
         }
     }
     if (data != nullptr && data != RETRO_HW_FRAME_BUFFER_VALID) {
-        fprintf(stderr, "SDL2 render: pixel_format=%u, width=%d, height=%d, pitch=%zu\n", game_pixel_format, width, height, pitch);
         if (!gl_renderer_gen_texture(data, pitch / bpp)) {
             drawn = false;
             return;
