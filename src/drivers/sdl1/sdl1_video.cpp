@@ -147,6 +147,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     }
     int h = static_cast<int>(height);
     int scale = current_scale;
+    unsigned input_bpp = (pitch > 0 && width > 0) ? (pitch / width) * 8 : 16;
     unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
     if (scale == 1) {
         auto *pixels = static_cast<uint8_t *>(screen_ptr);
@@ -155,7 +156,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         if (output_pitch == pitch) {
             memcpy(pixels, input, h * pitch);
         } else {
-            int line_bytes = width*(bpp >> 3);
+            int line_bytes = width*(input_bpp >> 3);
             for (; h; h--) {
                 memcpy(pixels, input, line_bytes);
                 pixels += output_pitch;
@@ -165,7 +166,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
     } else {
     #define CODE_WITH_TYPE(TYPE) \
         int output_pitch = screen->pitch / sizeof(TYPE); \
-        const TYPE *input = static_cast<const TYPE*>(data); \
+        const TYPE *input_data = static_cast<const TYPE*>(data); \
         TYPE *pixels = static_cast<TYPE*>(screen_ptr); \
         int src_pitch = pitch / sizeof(TYPE); \
         int scaled_width = width * scale; \
@@ -175,12 +176,12 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
             for (int y = 0; y < height; y++) { \
                 int x = 0; \
                 for (int i = 0; i < width; i++) { \
-                    TYPE pix = input[i]; \
+                    TYPE pix = input_data[i]; \
                     for (int j = 0; j < scale; j++) { \
                         h_line[x++] = pix; \
                     } \
                 } \
-                input += src_pitch; \
+                input_data += src_pitch; \
                 for (int v = 0; v < scale; v++) { \
                     memcpy(pixels, h_line, scaled_width * sizeof(TYPE)); \
                     pixels += output_pitch; \
@@ -188,7 +189,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
             } \
             free(h_line); \
         }
-        if (bpp == 32) {
+        if (input_bpp == 32) {
             CODE_WITH_TYPE(uint32_t)
         } else {
             CODE_WITH_TYPE(uint16_t)
