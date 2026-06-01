@@ -800,12 +800,13 @@ void sdl2_video::gl_renderer_create_empty_texture() const {
         break;
     case 1:
         if (gl_renderer.use_gles) {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, gl_renderer.texture_w, gl_renderer.texture_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_BLUE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ONE);
-        } else {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, gl_renderer.texture_w, gl_renderer.texture_h, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_GREEN);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_ONE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_BLUE);
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, gl_renderer.texture_w, gl_renderer.texture_h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, nullptr);
         }
         break;
     default:
@@ -862,9 +863,9 @@ bool sdl2_video::gl_renderer_gen_texture(const void *data, size_t pitch) const {
         break;
     case 1:
         if (gl_renderer.use_gles) {
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        } else {
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, data);
         }
         break;
     default:
