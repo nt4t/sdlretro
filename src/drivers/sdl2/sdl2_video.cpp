@@ -940,39 +940,55 @@ void sdl2_video::render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool sh
     int gx = glyph_cache[c].x_offset;
     int gy = glyph_cache[c].y_offset;
     
-    float nx = static_cast<float>(x + gx);
-    float ny = static_cast<float>(y + gy);
-    float nw = static_cast<float>(gw);
-    float nh = static_cast<float>(gh);
+    float x0 = static_cast<float>(x + gx);
+    float y0 = static_cast<float>(y + gy);
+    float x1 = x0 + static_cast<float>(gw);
+    float y1 = y0 + static_cast<float>(gh);
     
-    float u1 = 0.0f, v1 = 0.0f;
-    float u2 = 1.0f, v2 = 1.0f;
+    glUseProgram(program_font);
+    glBindVertexArray(vao_font);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, glyph_cache[c].texture_id);
+    
+    if (shadow) {
+        float shx0 = x0 + 1.f;
+        float shx1 = x1 + 1.f;
+        float shy0 = y0 + 1.f;
+        float shy1 = y1 + 1.f;
+        float vertices[] = {
+            shx0, shy0, 0.0f, 0.0f,
+            shx1, shy0, 1.0f, 0.0f,
+            shx0, shy1, 0.0f, 1.0f,
+            shx1, shy1, 1.0f, 1.0f
+        };
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_font);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glUniform3f(uniform_font_color, 0.f, 0.f, 0.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
     
     float vertices[] = {
-        nx, ny, u1, v1,
-        nx + nw, ny, u2, v1,
-        nx, ny + nh, u1, v2,
-        nx + nw, ny + nh, u2, v2
+        x0, y0, 0.0f, 0.0f,
+        x1, y0, 1.0f, 0.0f,
+        x0, y1, 0.0f, 1.0f,
+        x1, y1, 1.0f, 1.0f
     };
-    
-    GLuint vao, vbo;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_font);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    
-    glBindTexture(GL_TEXTURE_2D, glyph_cache[c].texture_id);
+    glUniform3f(uniform_font_color, 1.0f, 1.0f, 1.0f);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     
+    glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    glUseProgram(0);
 }
 
 }
