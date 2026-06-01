@@ -38,9 +38,17 @@ sdl1_video::sdl1_video() {
     ttf[1]->init(16, 0);
     ttf[1]->add(g_cfg.get_data_dir() + PATH_SEPARATOR_CHAR + "fonts" + PATH_SEPARATOR_CHAR + "bold.ttf", 0);
     LOG(INFO, "SDL1 font[1] loaded: {}", ttf[1]->is_valid() ? "yes" : "no");
+
+    for (int i = 0; i < 128; i++) {
+        glyph_cache[i].surface = nullptr;
+        glyph_cache[i].width = 0;
+        glyph_cache[i].height = 0;
+    }
+    glyph_cache_initialized = false;
 }
 
 sdl1_video::~sdl1_video() {
+    deinit_glyph_cache();
     SDL_UnlockSurface(screen);
 }
 
@@ -66,7 +74,6 @@ sdl1_video::~sdl1_video() {
 bool sdl1_video::game_resolution_changed(int width, int height, int max_width, int max_height, unsigned pixel_format) {
     if (g_cfg.get_scaling_mode() == 0) {
         SDL_UnlockSurface(screen);
-        usleep(10000);
         curr_pixel_format = pixel_format;
         unsigned bpp = pixel_format == 1 ? 32 : 16;
         bool was_fullscreen = (screen->flags & SDL_FULLSCREEN) != 0;
@@ -136,27 +143,29 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         }
     } else {
     #define CODE_WITH_TYPE(TYPE) \
-        auto *pixels = static_cast<TYPE*>(screen_ptr); \
-        const auto *input = static_cast<const TYPE*>(data); \
         int output_pitch = screen->pitch / sizeof(TYPE); \
-        auto s = scale; \
-        auto subp = pitch / sizeof(TYPE) - width; \
-        auto subd = output_pitch - s; \
-        output_pitch *= scale - 1; \
-        for (; h; h--) { \
-            for (unsigned z = width; z; z--) { \
-                auto pix = *input++; \
-                auto *out = pixels; \
-                for (int j = s; j; j--) { \
-                    for (int i = s; i; i--) { \
-                        *out++ = pix; \
+        const TYPE *input = static_cast<const TYPE*>(data); \
+        TYPE *pixels = static_cast<TYPE*>(screen_ptr); \
+        int src_pitch = pitch / sizeof(TYPE); \
+        int scaled_width = width * scale; \
+        int scaled_height = height * scale; \
+        TYPE *h_line = (TYPE*)malloc(scaled_width * sizeof(TYPE)); \
+        if (h_line) { \
+            for (int y = 0; y < height; y++) { \
+                int x = 0; \
+                for (int i = 0; i < width; i++) { \
+                    TYPE pix = input[i]; \
+                    for (int j = 0; j < scale; j++) { \
+                        h_line[x++] = pix; \
                     } \
-                    out += subd; \
                 } \
-                pixels += s; \
+                input += src_pitch; \
+                for (int v = 0; v < scale; v++) { \
+                    memcpy(pixels, h_line, scaled_width * sizeof(TYPE)); \
+                    pixels += output_pitch; \
+                } \
             } \
-            pixels += output_pitch; \
-            input += subp; \
+            free(h_line); \
         }
         if (bpp == 32) {
             CODE_WITH_TYPE(uint32_t)
@@ -201,7 +210,7 @@ void sdl1_video::clear() {
 
 void sdl1_video::flip() {
     SDL_UnlockSurface(screen);
-    SDL_Flip(screen);
+    SDL_UpdateRect(screen, 0, 0, screen->w, screen->h);
     SDL_LockSurface(screen);
     screen_ptr = screen->pixels;
 }
@@ -282,55 +291,66 @@ inline const font_data_t &get_pixel_font_data(uint8_t c) {
 #endif
 }
 
-void sdl1_video::get_text_width_and_height(const char *text, int &w, int &t, int &b) const {
-    w = 0;
-    t = 255;
-    b = -255;
-    while (*text) {
-        uint8_t c = *text++;
-        if (c > 0x7F) continue;
+void sdl1_video::init_glyph_cache() {
+    if (glyph_cache_initialized) return;
+    
+    for (int c = 0; c < 128; c++) {
         const auto &fd = get_pixel_font_data(c);
-        w += fd.sw;
-        if (fd.y < t) t = fd.y;
-        if (fd.y + fd.h > b) b = fd.y + fd.h;
+        if (fd.w == 0 || fd.h == 0) continue;
+        
+        glyph_cache[c].width = fd.w;
+        glyph_cache[c].height = fd.h;
+        glyph_cache[c].x_offset = fd.x;
+        glyph_cache[c].y_offset = fd.y;
+        glyph_cache[c].valid = true;
+        
+        size_t pixel_size = sizeof(uint32_t);
+        glyph_cache[c].pixels = new uint8_t[fd.w * fd.h * pixel_size];
+        
+        uint8_t *dest = glyph_cache[c].pixels;
+        const uint8_t *fontdata = fd.data;
+        uint32_t step = (fd.w + 7) >> 3;
+        
+        for (int y = 0; y < fd.h; y++) {
+            uint8_t bitflag = 0x01;
+            uint32_t fdidx = 0;
+            for (int x = 0; x < fd.w; x++) {
+                uint32_t pixel = 0;
+                if (fontdata[fdidx] & bitflag) {
+                    pixel = 0xFFFFFFFF;
+                }
+                memcpy(dest, &pixel, pixel_size);
+                dest += pixel_size;
+                if (bitflag == 0x80) {
+                    fdidx++;
+                    bitflag = 1;
+                } else {
+                    bitflag <<= 1;
+                }
+            }
+            fontdata += step;
+        }
     }
+    glyph_cache_initialized = true;
 }
 
-void sdl1_video::draw_text_pixel(int x, int y, const char *text, int width, bool shadow) {
-    bool allow_wrap = false;
-    int nwidth;
-    int ox = x;
-    unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
-    if (width == 0) {
-        nwidth = width = screen->w - x;
-    } else if (width == -1) {
-        nwidth = width = screen->w - x;
-        allow_wrap = true;
-    } else {
-        if (width < 0) {
-            allow_wrap = true;
-            width = -width;
-            nwidth = width;
-        } else {
-            nwidth = width;
+void sdl1_video::deinit_glyph_cache() {
+    if (!glyph_cache_initialized) return;
+    
+    for (int c = 0; c < 128; c++) {
+        if (glyph_cache[c].pixels) {
+            delete[] glyph_cache[c].pixels;
+            glyph_cache[c].pixels = nullptr;
         }
+        glyph_cache[c].valid = false;
     }
-    auto swidth = screen->pitch / screen->format->BytesPerPixel;
-    while (*text) {
-        uint8_t c = *text++;
-        if (c > 0x7F) continue;
+    glyph_cache_initialized = false;
+}
+
+void sdl1_video::render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool shadow) {
+    if (!glyph_cache[c].valid) {
         const auto &fd = get_pixel_font_data(c);
-        if (fd.sw > nwidth) {
-            if (!allow_wrap) break;
-            x = ox;
-            nwidth = width;
-#ifdef GCW_ZERO
-            y += 8 + 1;
-#else
-            y += 16 + 1;
-#endif
-        }
-        nwidth -= fd.sw;
+        unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
     #define CODE_WITH_TYPE(TYPE) \
         auto *ptr = (TYPE*)screen_ptr + x + fd.x + (y + fd.y) * swidth; \
         auto *fontdata = fd.data; \
@@ -380,13 +400,105 @@ void sdl1_video::draw_text_pixel(int x, int y, const char *text, int width, bool
             CODE_WITH_TYPE(uint16_t)
         }
     #undef CODE_WITH_TYPE
+        return;
+    }
+    
+    unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
+    int gw = glyph_cache[c].width;
+    int gh = glyph_cache[c].height;
+    int gx = glyph_cache[c].x_offset;
+    int gy = glyph_cache[c].y_offset;
+    
+    if (bpp == 32) {
+        auto *ptr = (uint32_t*)screen_ptr + x + gx + (y + gy) * swidth;
+        uint32_t *src = (uint32_t*)glyph_cache[c].pixels;
+        uint32_t wrapx = swidth - gw;
+        for (int h = 0; h < gh; h++) {
+            for (int w = 0; w < gw; w++) {
+                if (src[w]) {
+                    ptr[w] = 0xFFFFFFFF;
+                }
+            }
+            ptr += swidth;
+            src += gw;
+        }
+    } else {
+        auto *ptr = (uint16_t*)screen_ptr + x + gx + (y + gy) * swidth;
+        uint32_t *src = (uint32_t*)glyph_cache[c].pixels;
+        uint32_t wrapx = swidth - gw;
+        for (int h = 0; h < gh; h++) {
+            for (int w = 0; w < gw; w++) {
+                if (src[w]) {
+                    ptr[w] = 0xFFFF;
+                }
+            }
+            ptr += swidth;
+            src += gw;
+        }
+    }
+}
+
+void sdl1_video::get_text_width_and_height(const char *text, int &w, int &t, int &b) const {
+    w = 0;
+    t = 255;
+    b = -255;
+    while (*text) {
+        uint8_t c = *text++;
+        if (c > 0x7F) continue;
+        const auto &fd = get_pixel_font_data(c);
+        w += fd.sw;
+        if (fd.y < t) t = fd.y;
+        if (fd.y + fd.h > b) b = fd.y + fd.h;
+    }
+}
+
+void sdl1_video::draw_text_pixel(int x, int y, const char *text, int width, bool shadow) {
+    bool allow_wrap = false;
+    int nwidth;
+    int ox = x;
+    unsigned bpp = curr_pixel_format == 1 ? 32 : 16;
+    if (width == 0) {
+        nwidth = width = screen->w - x;
+    } else if (width == -1) {
+        nwidth = width = screen->w - x;
+        allow_wrap = true;
+    } else {
+        if (width < 0) {
+            allow_wrap = true;
+            width = -width;
+            nwidth = width;
+        } else {
+            nwidth = width;
+        }
+    }
+    int swidth = screen->pitch / screen->format->BytesPerPixel;
+    
+    if (!glyph_cache_initialized) {
+        init_glyph_cache();
+    }
+    
+    while (*text) {
+        uint8_t c = *text++;
+        if (c > 0x7F) continue;
+        const auto &fd = get_pixel_font_data(c);
+        if (fd.sw > nwidth) {
+            if (!allow_wrap) break;
+            x = ox;
+            nwidth = width;
+#ifdef GCW_ZERO
+            y += 8 + 1;
+#else
+            y += 16 + 1;
+#endif
+        }
+        nwidth -= fd.sw;
+        render_glyph_pixel(c, x, y, swidth, shadow);
         x += fd.sw;
     }
 }
 
 void sdl1_video::gui_popup() {
     SDL_UnlockSurface(screen);
-    usleep(10000);
     saved_width = curr_width;
     saved_height = curr_height;
     saved_pixel_format = curr_pixel_format;

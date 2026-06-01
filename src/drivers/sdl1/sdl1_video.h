@@ -39,6 +39,7 @@ public:
 
 private:
     void draw_text_pixel(int x, int y, const char *text, int width, bool shadow);
+    void render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool shadow);
 
 public:
     void gui_popup() override;
@@ -67,6 +68,21 @@ private:
     int frame_count = 0;
     double last_fps_update = 0;
     int current_fps = 0;
+
+    /* glyph cache for faster text rendering */
+    struct glyph_cache_entry {
+        uint8_t *pixels = nullptr;
+        int width = 0;
+        int height = 0;
+        int x_offset = 0;
+        int y_offset = 0;
+        bool valid = false;
+    };
+    glyph_cache_entry glyph_cache[128];
+    bool glyph_cache_initialized = false;
+
+    void init_glyph_cache();
+    void deinit_glyph_cache();
 };
 
 }
