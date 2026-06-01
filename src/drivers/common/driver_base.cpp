@@ -569,6 +569,14 @@ bool driver_base::env_callback(unsigned cmd, void *data) {
             *(unsigned*)data = 2;
             return true;
         }
+        case RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK: {
+            // TODO: implement audio buffer status callback
+            return true;
+        }
+        case RETRO_ENVIRONMENT_SET_MINIMUM_AUDIO_LATENCY: {
+            // TODO: implement minimum audio latency
+            return true;
+        }
         default:
             break;
     }
