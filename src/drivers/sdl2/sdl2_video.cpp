@@ -326,12 +326,12 @@ void sdl2_video::draw_rectangle(int x, int y, int w, int h) {
 }
 
 void sdl2_video::fill_rectangle(int x, int y, int w, int h) {
-    auto x1 = (float)x, y1 = (float)y, x2 = (float)(x + w), y2 = (float)(y + h);
+    auto x1 = (float)x - 0.5f, y1 = (float)y - 0.5f, x2 = (float)(x + w) + 0.5f, y2 = (float)(y + h) + 0.5f;
     float vertices[] = {
         x1, y1, gl_renderer.draw_color[0], gl_renderer.draw_color[1], gl_renderer.draw_color[2], gl_renderer.draw_color[3],
         x2, y1, gl_renderer.draw_color[0], gl_renderer.draw_color[1], gl_renderer.draw_color[2], gl_renderer.draw_color[3],
-        x1, y2, gl_renderer.draw_color[0], gl_renderer.draw_color[1], gl_renderer.draw_color[2], gl_renderer.draw_color[3],
-        x2, y2, gl_renderer.draw_color[0], gl_renderer.draw_color[1], gl_renderer.draw_color[2], gl_renderer.draw_color[3]
+        x2, y2, gl_renderer.draw_color[0], gl_renderer.draw_color[1], gl_renderer.draw_color[2], gl_renderer.draw_color[3],
+        x1, y2, gl_renderer.draw_color[0], gl_renderer.draw_color[1], gl_renderer.draw_color[2], gl_renderer.draw_color[3]
     };
     glUseProgram(gl_renderer.program_direct_draw);
     glBindVertexArray(gl_renderer.vao_draw);
