@@ -64,6 +64,9 @@ private:
     /* indicate wheather frame was drawn, for auto frameskip use */
     bool drawn = false;
 
+    /* track surface lock state to avoid redundant lock/unlock */
+    bool surface_locked = false;
+
     /* fps counter */
     bool fps_enabled = false;
     int frame_count = 0;

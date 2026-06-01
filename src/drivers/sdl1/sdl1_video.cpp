@@ -29,6 +29,7 @@ sdl1_video::sdl1_video() {
     screen = SDL_SetVideoMode(curr_width, curr_height, 16, sdl_video_flags);
     SDL_LockSurface(screen);
     screen_ptr = screen->pixels;
+    surface_locked = true;
 
     ttf[0] = std::make_shared<sdl1_ttf>();
     ttf[0]->init(16, 0);
@@ -70,18 +71,26 @@ void sdl1_video::ensure_h_line_buffer(int width) {
 
   void sdl1_video::window_resized(int width, int height, bool fullscreen) {
     if (fullscreen) {
-        SDL_UnlockSurface(screen);
+        if (surface_locked) {
+            SDL_UnlockSurface(screen);
+            surface_locked = false;
+        }
         int flags = sdl_video_flags | SDL_FULLSCREEN;
         screen = SDL_SetVideoMode(0, 0, 16, flags);
         SDL_LockSurface(screen);
         screen_ptr = screen->pixels;
+        surface_locked = true;
         curr_width = screen->w;
         curr_height = screen->h;
     } else {
-        SDL_UnlockSurface(screen);
+        if (surface_locked) {
+            SDL_UnlockSurface(screen);
+            surface_locked = false;
+        }
         screen = SDL_SetVideoMode(width, height, 16, sdl_video_flags);
         SDL_LockSurface(screen);
         screen_ptr = screen->pixels;
+        surface_locked = true;
         curr_width = width;
         curr_height = height;
     }
@@ -89,7 +98,10 @@ void sdl1_video::ensure_h_line_buffer(int width) {
 
 bool sdl1_video::game_resolution_changed(int width, int height, int max_width, int max_height, unsigned pixel_format) {
     if (g_cfg.get_scaling_mode() == 0) {
-        SDL_UnlockSurface(screen);
+        if (surface_locked) {
+            SDL_UnlockSurface(screen);
+            surface_locked = false;
+        }
         curr_pixel_format = pixel_format;
         unsigned bpp = pixel_format == 1 ? 32 : 16;
         bool was_fullscreen = (screen->flags & SDL_FULLSCREEN) != 0;
@@ -129,6 +141,7 @@ bool sdl1_video::game_resolution_changed(int width, int height, int max_width, i
         }
         SDL_LockSurface(screen);
         screen_ptr = screen->pixels;
+        surface_locked = true;
     } else {
         int scale = force_scale == 0 ? g_cfg.get_scale() : force_scale;
         if (g_cfg.get_integer_scaling() && width > 0 && height > 0) {
@@ -344,10 +357,16 @@ void sdl1_video::clear() {
 }
 
 void sdl1_video::flip() {
+    if (!surface_locked) {
+        SDL_LockSurface(screen);
+        surface_locked = true;
+    }
     SDL_UnlockSurface(screen);
+    surface_locked = false;
     SDL_UpdateRect(screen, 0, 0, screen->w, screen->h);
     SDL_LockSurface(screen);
     screen_ptr = screen->pixels;
+    surface_locked = true;
 }
 
 int sdl1_video::get_font_size() const {
