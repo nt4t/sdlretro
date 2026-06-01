@@ -47,6 +47,8 @@ public:
     void config_changed() override;
 
     inline uintptr_t get_hw_fbo() const { return hw_renderer.fbo; }
+    inline void set_fps_enabled(bool enabled) { fps_enabled = enabled; }
+    inline bool get_fps_enabled() const { return fps_enabled; }
 
 private:
     bool init_video(bool use_gles);
