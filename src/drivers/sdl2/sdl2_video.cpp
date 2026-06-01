@@ -945,8 +945,8 @@ void sdl2_video::render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool sh
     float x1 = x0 + static_cast<float>(gw);
     float y1 = y0 + static_cast<float>(gh);
     
-    glUseProgram(program_font);
-    glBindVertexArray(vao_font);
+    glUseProgram(gl_renderer.program_font);
+    glBindVertexArray(gl_renderer.vao_font);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, glyph_cache[c].texture_id);
     
@@ -961,13 +961,13 @@ void sdl2_video::render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool sh
             shx0, shy1, 0.0f, 1.0f,
             shx1, shy1, 1.0f, 1.0f
         };
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_font);
+        glBindBuffer(GL_ARRAY_BUFFER, gl_renderer.vbo_font);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        glUniform3f(uniform_font_color, 0.f, 0.f, 0.f);
+        glUniform3f(gl_renderer.uniform_font_color, 0.f, 0.f, 0.f);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
     
@@ -977,13 +977,13 @@ void sdl2_video::render_glyph_pixel(uint8_t c, int x, int y, int swidth, bool sh
         x0, y1, 0.0f, 1.0f,
         x1, y1, 1.0f, 1.0f
     };
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_font);
+    glBindBuffer(GL_ARRAY_BUFFER, gl_renderer.vbo_font);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glUniform3f(uniform_font_color, 1.0f, 1.0f, 1.0f);
+    glUniform3f(gl_renderer.uniform_font_color, 1.0f, 1.0f, 1.0f);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     
     glBindTexture(GL_TEXTURE_2D, 0);
