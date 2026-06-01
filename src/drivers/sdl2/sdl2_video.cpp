@@ -863,9 +863,9 @@ bool sdl2_video::gl_renderer_gen_texture(const void *data, size_t pitch) const {
         break;
     case 1:
         if (gl_renderer.use_gles) {
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_RGBA, GL_UNSIGNED_BYTE, data);
         } else {
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, data);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, game_width, game_height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
         }
         break;
     default:
