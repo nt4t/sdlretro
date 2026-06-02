@@ -58,8 +58,8 @@ public:
     inline int get_language() const { return language; }
     inline void set_language(int lang) { language = lang; }
 
-    inline double get_frame_limit() const { return frame_limit; }
-    inline void set_frame_limit(double f) { frame_limit = f; }
+    inline float get_frame_limit() const { return frame_limit; }
+    inline void set_frame_limit(float f) { frame_limit = f; }
 
 protected:
     /* config filename */
@@ -111,7 +111,7 @@ protected:
     uint32_t save_check = 0;
 
     /* frame limit in FPS, set to 0 to use core FPS */
-    double frame_limit = 0.0;
+    float frame_limit = 0.0f;
 
     /* ui langauge
      * check enum retro_language in libretro.h

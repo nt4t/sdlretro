@@ -79,7 +79,7 @@ if (menu_button_pressed) {
             audio->pause(true);
             in_game_menu_cb();
             audio->pause(false);
-            double effective_fps = g_cfg.get_frame_limit() > 0 ? g_cfg.get_frame_limit() : fps;
+      float effective_fps = g_cfg.get_frame_limit() > 0 ? g_cfg.get_frame_limit() : fps;
             frame_throttle->reset(effective_fps);
             menu_button_pressed = false;
         }
@@ -716,7 +716,7 @@ void driver_base::post_load() {
     }
 
   audio->start(g_cfg.get_mono_audio(), sample_rate, g_cfg.get_sample_rate(), fps);
-    double effective_fps = g_cfg.get_frame_limit() > 0 ? g_cfg.get_frame_limit() : fps;
+  float effective_fps = g_cfg.get_frame_limit() > 0 ? g_cfg.get_frame_limit() : fps;
     frame_throttle->reset(effective_fps);
     core->retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     video->set_aspect_ratio(aspect_ratio);
