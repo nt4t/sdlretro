@@ -33,3 +33,6 @@
 
 # Opencode config
 opencode.json
+
+# Build directory
+build/
