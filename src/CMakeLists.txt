@@ -23,17 +23,8 @@ option(SDLRETRO_USE_STATIC_CRT "Use static C Runtime" ${DEFAULT_STATIC_CRT})
 set(SDLRETRO_FRONTEND "${DEFAULT_FRONTEND}" CACHE STRING "Select frontend (SDL1, SDL2)")
 option(SDLRETRO_USE_STB_TRUETYPE "Use stb truetype (aka build w/o FreeType)" ${DEFAULT_STB_TRUETYPE})
 option(SDLRETRO_CORE_DOWNLOADER "Enable core downloader" ${DEFAULT_CORE_DOWNLOADER})
-option(SDLRETRO_X11_SHM "Enable X11 Shared Memory backend (Linux only)" OFF)
-
 if(SDLRETRO_CORE_DOWNLOADER)
     find_package(CURL REQUIRED)
-endif()
-
-if(SDLRETRO_X11_SHM)
-    find_package(X11 REQUIRED COMPONENTS Xext)
-    if(NOT X11_Xext_FOUND)
-        message(FATAL_ERROR "XShm extension not found. Install libxext-dev or equivalent.")
-    endif()
 endif()
 
 if(SDLRETRO_USE_STATIC_CRT)
@@ -90,11 +81,5 @@ elseif(SDLRETRO_FRONTEND STREQUAL "SDL2")
 else()
     message(FATAL_ERROR SDLRETRO_FRONTEND must be SDL1 or SDL2)
 endif()
-
-if(SDLRETRO_X11_SHM)
-    target_compile_definitions(sdlretro PRIVATE SDLRETRO_X11_SHM)
-endif()
-
-
 
 set_target_properties(sdlretro PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

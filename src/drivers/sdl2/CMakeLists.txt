@@ -14,15 +14,6 @@ add_library(driver_sdl2 STATIC
     sdl2_audio.h
     )
 
-if(SDLRETRO_X11_SHM)
-    target_sources(driver_sdl2 PRIVATE
-        x11_shm_video.cpp
-        x11_shm_video.h
-    )
-    target_compile_definitions(driver_sdl2 PUBLIC SDLRETRO_X11_SHM)
-    target_link_libraries(driver_sdl2 ${X11_LIBRARIES} ${X11_XSHM_LIB})
-endif()
-
 target_compile_definitions(driver_sdl2 PUBLIC SDL_MAIN_HANDLED)
 target_include_directories(driver_sdl2 PUBLIC include)
 target_link_libraries(driver_sdl2 driver_common)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 if("${MODEL}" MATCHES "opendingux|gcw0|rg350")
     set(OPENDINGUX TRUE)

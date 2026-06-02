@@ -7,10 +7,6 @@
 #include "throttle.h"
 #include "logger.h"
 
-#ifdef SDLRETRO_X11_SHM
-#include "x11_shm_video.h"
-#endif
-
 #include <SDL.h>
 
 namespace drivers {
@@ -20,22 +16,8 @@ sdl2_impl::sdl2_impl() {
         return;
     }
 
-#ifdef SDLRETRO_X11_SHM
-    auto x11_video = std::make_shared<x11_shm_video>();
-    if (x11_video->init_video(640, 480)) {
-        video = x11_video;
-        video->set_x11_key_callback([this](int scancode, int state) {
-            input->on_km_input(scancode, state != 0);
-        });
-        LOG(INFO, "Render backend: X11 Shm");
-    } else {
-        video = std::make_shared<sdl2_video>();
-        LOG(INFO, "Render backend: OpenGL (X11 Shm init failed)");
-    }
-#else
-    video = std::make_shared<sdl2_video>();
+   video = std::make_shared<sdl2_video>();
     LOG(INFO, "Render backend: OpenGL");
-#endif
 
     input = std::make_shared<sdl2_input>();
     input->post_init();
@@ -49,7 +31,6 @@ sdl2_impl::~sdl2_impl() {
 }
 
 bool sdl2_impl::process_events() {
-    video->process_x11_events();
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
@@ -62,7 +43,7 @@ bool sdl2_impl::process_events() {
                 g_cfg.set_fullscreen(!g_cfg.get_fullscreen());
                 int w, h;
                 g_cfg.get_resolution(w, h);
-                video->window_resized(w, h, g_cfg.get_fullscreen());
+            video->window_resized(w, h, g_cfg.get_fullscreen());
                 break;
             }
             if (
@@ -147,3 +128,4 @@ void sdl2_impl::unload() {
 }
 
 }
+
