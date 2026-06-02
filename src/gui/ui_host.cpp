@@ -103,7 +103,7 @@ bool ui_host::global_settings_menu(menu_base *parent) {
         }
         std::vector<menu_item> items = {
 #if SDLRETRO_FRONTEND == 1
-            {menu_values, "Scale Factor"_i18n, "", g_cfg.get_scale() - 1,
+            {menu_values, "Scale Factor"_i18n, "", static_cast<uint64_t>(g_cfg.get_scale() - 1),
                 {"1x"_i18n, "2x"_i18n, "3x"_i18n, "4x"_i18n, "5x"_i18n},
                 [](const menu_item &item) -> bool {
                     g_cfg.set_scale(item.selected + 1);
@@ -112,7 +112,7 @@ bool ui_host::global_settings_menu(menu_base *parent) {
             },
 #endif
 #if SDLRETRO_FRONTEND == 2
-            {menu_values, "Scale Factor"_i18n, "", g_cfg.get_scale() - 1,
+            {menu_values, "Scale Factor"_i18n, "", static_cast<uint64_t>(g_cfg.get_scale() - 1),
                 {"1x"_i18n, "2x"_i18n, "3x"_i18n, "4x"_i18n, "5x"_i18n},
                 [](const menu_item &item) -> bool {
                     g_cfg.set_scale(item.selected + 1);
