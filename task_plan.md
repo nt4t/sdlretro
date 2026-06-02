@@ -1,49 +1,46 @@
-# X11 Shm Video Backend - Implementation Plan
+# Task Plan: Optional Frame Limit for SDL1 Render
 
 ## Goal
-Add an X11 Shared Memory (XShm) video rendering backend for sdlretro on Linux/X11 systems. Opt-in via `SDLRETRO_X11_SHM` build option. Falls back to OpenGL if unavailable.
+Add an optional frame limit configuration option that allows users to cap the frame rate for SDL1 render (e.g., limit to 30fps for games that run at 120fps due to missing VBL delay).
+
+## Current State
+- Frame timing is handled by `throttle` class in `throttle.cpp`
+- Throttle is initialized with core's reported FPS in `driver_base::post_load()`
+- Main loop in `driver_base::run()` calls `check_wait()` after each frame
+- No frame limit config option exists currently
+- SDL1 and SDL2 share the same driver_base, throttle, and config system
+
+## Design Decision
+**Approach: Config-driven throttle override in driver_base**
+- Add `frame_limit` config field (0 = disabled, use core FPS; >0 = limit to this FPS)
+- Override throttle in `post_load()` and when config changes
+- Works for both SDL1 and SDL2 (shared driver_base)
+- Simple, minimal changes, no core timing modifications
 
 ## Phases
 
-### Phase 1: Build System Setup
-- [x] Add `SDLRETRO_X11_SHM` option to `src/CMakeLists.txt`
-- [x] Add X11/XShm dependency detection in CMake
-- [x] Add `x11_shm_video.cpp` to SDL2 driver sources
-- [x] Add compile definition `SDLRETRO_X11_SHM`
+### Phase 1: Add config field
+- [ ] Add `frame_limit` field to `cfg` class in `cfg.h`
+- [ ] Add getter/setter methods
+- [ ] Add load/save support in `cfg.cpp`
+- Default: 0 (disabled)
 
-### Phase 2: X11 Shm Video Backend (x11_shm_video.h/cpp)
-- [x] Create `x11_shm_video.h` — header with class declaration
-- [x] Create `x11_shm_video.cpp` — implementation
-  - [x] `init_video()` — XOpenDisplay, XCreateSimpleWindow, XShmCreateImage
-  - [x] `render()` — XShmPutImage for frame delivery
-  - [x] `frame_render()` — no-op (synchronous)
-  - [x] `flip()` — no-op
-  - [x] `clear()`, `fill_rectangle()` — X11 drawing primitives
-  - [x] `draw_text()` — X11 bitmap text
-  - [x] `gui_predraw()` — prepare for overlay
-  - [x] `get_resolution()`, `window_resized()`, `game_resolution_changed()`
-  - [x] Fallback to OpenGL if X11/XShm unavailable
+### Phase 2: Apply frame limit in driver_base
+- [ ] Modify `post_load()` to use frame_limit if set
+- [ ] Apply override after core's `GET_SYSTEM_AV_INFO`
+- [ ] Handle config changes (menu re-entry)
 
-### Phase 3: Driver Integration
-- [x] Modify `sdl2_impl.h` — conditional video class selection
-- [x] Modify `sdl2_impl.cpp` — conditional window creation (X11 vs SDL2)
-- [x] Wire up input events for X11 window (SDL already handles this)
+### Phase 3: Test
+- [ ] Test with core that runs too fast (needs frame limit)
+- [ ] Test with core that runs at correct speed (frame_limit=0)
+- [ ] Test changing frame_limit at runtime
 
-### Phase 4: Testing & Verification
-- [ ] Build with `SDLRETRO_X11_SHM=ON` on Linux/X11
-- [ ] Build with `SDLRETRO_X11_SHM=OFF` (no regression)
-- [ ] Build on non-Linux platforms (no regression)
-- [ ] Verify OpenGL fallback when X11 unavailable
-
-## Decisions (from design doc)
-- Linux/X11 only
-- XRGB8888 pixel format only
-- Full GUI overlay via X11 primitives
-- Bitmap font fallback (no FreeType)
-- No integer scaling, no custom shaders
-- Synchronous rendering (XShmPutImage blocks)
+## Files to Modify
+1. `src/libretro/include/cfg.h` - Add frame_limit field
+2. `src/libretro/cfg.cpp` - Add load/save for frame_limit
+3. `src/drivers/common/driver_base.cpp` - Apply frame limit to throttle
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| | | |
+| - | - | - |

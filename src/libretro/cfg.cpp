@@ -127,7 +127,8 @@ void cfg::load(const std::string &cfgfile) {
         JREAD(scale, DEFAULT_SCALE);
         JREAD(integer_scaling, false);
         JREAD(linear, true);
-        JREAD(save_check, 0);
+JREAD(save_check, 0);
+        JREAD(frame_limit, 0.0);
         JREAD(language, 0);
 #undef JREAD
     }
@@ -149,6 +150,7 @@ void cfg::save() {
     JWRITE(integer_scaling);
     JWRITE(linear);
     JWRITE(save_check);
+    JWRITE(frame_limit);
     JWRITE(language);
 #undef JWRITE
     try {

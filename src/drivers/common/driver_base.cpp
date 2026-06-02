@@ -75,11 +75,12 @@ driver_base::~driver_base() {
 
 void driver_base::run(const std::function<void()> &in_game_menu_cb) {
     while (!shutdown_driver && !process_events()) {
-        if (menu_button_pressed) {
+if (menu_button_pressed) {
             audio->pause(true);
             in_game_menu_cb();
             audio->pause(false);
-            frame_throttle->reset(fps);
+            double effective_fps = g_cfg.get_frame_limit() > 0 ? g_cfg.get_frame_limit() : fps;
+            frame_throttle->reset(effective_fps);
             menu_button_pressed = false;
         }
 
@@ -714,8 +715,9 @@ void driver_base::post_load() {
         if (sz) memcpy(core->retro_get_memory_data(RETRO_MEMORY_RTC), rtc_data.data(), sz);
     }
 
-    audio->start(g_cfg.get_mono_audio(), sample_rate, g_cfg.get_sample_rate(), fps);
-    frame_throttle->reset(fps);
+  audio->start(g_cfg.get_mono_audio(), sample_rate, g_cfg.get_sample_rate(), fps);
+    double effective_fps = g_cfg.get_frame_limit() > 0 ? g_cfg.get_frame_limit() : fps;
+    frame_throttle->reset(effective_fps);
     core->retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     video->set_aspect_ratio(aspect_ratio);
     video->game_resolution_changed((int)base_width, (int)base_height, (int)max_width, (int)max_height, pixel_format);
