@@ -2,6 +2,8 @@
 
 #include "fbdev_video.h"
 #include "fbdev_input.h"
+
+#include <linux/input.h>
 #include "throttle.h"
 #include "logger.h"
 
@@ -62,11 +64,12 @@ fbdev_impl::~fbdev_impl() {
 }
 
 bool fbdev_impl::process_events() {
-    input->poll_events();
+    input->input_poll();
     
+    auto *fb_input = static_cast<fbdev_input*>(input.get());
     struct input_event ev;
     ssize_t bytes;
-    while ((bytes = input->read_event(&ev)) > 0) {
+    while ((bytes = fb_input->read_event(&ev)) > 0) {
         if (ev.type == EV_KEY) {
             uint16_t keycode = ev.code;
             bool pressed = ev.value != 0;
