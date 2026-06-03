@@ -18,7 +18,7 @@ public:
     bool game_resolution_changed(int width, int height, int max_width, int max_height, uint32_t pixel_format) override;
     void render(const void *data, int width, int height, size_t pitch) override;
     void frame_render() override;
-    bool frame_drawn() override { return drawn; }
+    bool frame_drawn() override;
 
     void *get_framebuffer(uint32_t *width, uint32_t *height, size_t *pitch, int *format) override;
     void get_resolution(int &width, int &height) override;
