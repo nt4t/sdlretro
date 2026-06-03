@@ -68,26 +68,31 @@ fbdev_impl::~fbdev_impl() {
 bool fbdev_impl::process_events() {
     input->input_poll();
     
-    struct input_event ev;
-    ssize_t bytes;
     auto *fb_input = static_cast<fbdev_input*>(input.get());
-    for (int fd : fb_input->get_event_fds()) {
-        while ((bytes = fb_input->read_event_from_fd(fd, &ev)) > 0) {
-            if (ev.type == EV_KEY) {
-                uint16_t keycode = ev.code;
-                bool pressed = ev.value != 0;
-                
-                if (pressed && keycode == KEY_F1) {
-                    if (!menu_button_pressed)
-                        menu_button_pressed = true;
-                    else
-                        return true;
-                } else if (pressed && keycode == KEY_ESC) {
+    for (const auto &ev : fb_input->get_stored_events()) {
+        if (ev.type == EV_KEY) {
+            uint16_t keycode = ev.code;
+            bool pressed = ev.value != 0;
+            
+            if (pressed && keycode == KEY_F1) {
+                if (!menu_button_pressed)
+                    menu_button_pressed = true;
+                else {
+                    fb_input->clear_stored_events();
                     return true;
                 }
+            } else if (pressed && keycode == KEY_ESC) {
+                fb_input->clear_stored_events();
+                return true;
+            }
+            
+            uint16_t sdlk = fb_input->keycode_to_sdlk(keycode);
+            if (sdlk != 0) {
+                input->on_km_input(sdlk, pressed);
             }
         }
     }
+    fb_input->clear_stored_events();
     return false;
 }
 

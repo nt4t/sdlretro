@@ -26,7 +26,9 @@ public:
     int read_event(struct input_event *ev);
     void poll_events();
     const std::vector<int>& get_event_fds() const { return event_fds; }
-    ssize_t read_event_from_fd(int fd, struct input_event *ev);
+    const std::vector<struct input_event>& get_stored_events() const { return stored_events; }
+    void clear_stored_events() { stored_events.clear(); }
+    static uint16_t keycode_to_sdlk(uint16_t keycode);
 
 private:
     int open_devices();
@@ -36,6 +38,7 @@ private:
     int max_fd = -1;
     std::array<uint16_t, 16> keymap = {};
     bool menu_button_pressed = false;
+    std::vector<struct input_event> stored_events;
 };
 
 }

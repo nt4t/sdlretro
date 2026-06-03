@@ -14,7 +14,7 @@
 
 namespace drivers {
 
-static uint16_t keycode_to_sdlk(uint16_t keycode) {
+uint16_t fbdev_input::keycode_to_sdlk(uint16_t keycode) {
     switch (keycode) {
         case KEY_1: return 49;
         case KEY_2: return 50;
@@ -147,13 +147,7 @@ void fbdev_input::poll_events() {
         
         while ((bytes = read(fd, &ev, sizeof(ev))) >= (ssize_t)sizeof(ev)) {
             if (ev.type == EV_KEY) {
-                uint16_t keycode = ev.code;
-                bool pressed = ev.value != 0;
-                
-                uint16_t sdlk = keycode_to_sdlk(keycode);
-                if (sdlk != 0) {
-                    on_km_input(sdlk, pressed);
-                }
+                stored_events.push_back(ev);
             }
         }
     }
