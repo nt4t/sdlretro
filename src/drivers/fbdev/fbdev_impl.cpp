@@ -1,20 +1,21 @@
 #include "fbdev_impl.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <linux/fb.h>
+#include <linux/input.h>
+#include <dirent.h>
+
+#include "driver_base.h"
 #include "fbdev_video.h"
 #include "fbdev_input.h"
-
-#include <linux/input.h>
-#include "throttle.h"
+#include "fbdev_audio.h"
 #include "logger.h"
 
 #include <core.h>
 #include <cfg.h>
-
-#include <fcntl.h>
-#include <unistd.h>
-#include <linux/fb.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
 
 #include <cstdint>
 #include <cstdio>
@@ -52,6 +53,7 @@ fbdev_impl::fbdev_impl() {
     
     video = std::make_shared<fbdev_video>(fb_fd, fb_ptr, fb_size, vinfo);
     input = std::make_shared<fbdev_input>();
+    audio = std::make_shared<fbdev_audio>();
     input->post_init();
     
     LOG(INFO, "Render backend: fbdev ({}x{}, {}bpp)", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel);
