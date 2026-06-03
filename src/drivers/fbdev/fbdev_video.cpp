@@ -285,12 +285,15 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
         if (idx >= 128) idx = 0;
         
         const font_data_t &fd = get_pixel_font_data(idx);
+        size_t step = (fd.w + 7) >> 3;
         
         if (shadow) {
             for (int py = 0; py < fd.h; py++) {
-                const unsigned char *src = fd.data + py * ((fd.w + 7) / 8);
+                const unsigned char *fontdata = fd.data + py * step;
+                uint8_t bitflag = 0x01;
+                size_t fdidx = 0;
                 for (int px = 0; px < fd.w; px++) {
-                    if ((src[px / 8] >> (7 - (px % 8))) & 1) {
+                    if (fontdata[fdidx] & bitflag) {
                         if (fb_bpp == 32) {
                             uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
                             ptr += (current_y + py + fd.y + 1) * fb_width + (current_x + px + fd.x + 1);
@@ -301,14 +304,22 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                             *ptr = static_cast<uint16_t>(shadow_color);
                         }
                     }
+                    if (bitflag == 0x80) {
+                        fdidx++;
+                        bitflag = 1;
+                    } else {
+                        bitflag <<= 1;
+                    }
                 }
             }
         }
         
         for (int py = 0; py < fd.h; py++) {
-            const unsigned char *src = fd.data + py * ((fd.w + 7) / 8);
+            const unsigned char *fontdata = fd.data + py * step;
+            uint8_t bitflag = 0x01;
+            size_t fdidx = 0;
             for (int px = 0; px < fd.w; px++) {
-                if ((src[px / 8] >> (7 - (px % 8))) & 1) {
+                if (fontdata[fdidx] & bitflag) {
                     if (fb_bpp == 32) {
                         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
                         ptr += (current_y + py + fd.y) * fb_width + (current_x + px + fd.x);
@@ -318,6 +329,12 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                         ptr += (current_y + py + fd.y) * fb_width + (current_x + px + fd.x);
                         *ptr = static_cast<uint16_t>(text_color);
                     }
+                }
+                if (bitflag == 0x80) {
+                    fdidx++;
+                    bitflag = 1;
+                } else {
+                    bitflag <<= 1;
                 }
             }
         }
