@@ -150,19 +150,6 @@ void fbdev_input::poll_events() {
                 uint16_t keycode = ev.code;
                 bool pressed = ev.value != 0;
                 
-                if (pressed && keycode == KEY_F1) {
-                    if (!menu_button_pressed && !menu_button_pending) {
-                        menu_button_pending = true;
-                    } else if (menu_button_pending) {
-                        menu_button_pressed = true;
-                        menu_button_pending = false;
-                    }
-                } else if (pressed && keycode == KEY_ESC) {
-                    menu_button_pressed = true;
-                } else {
-                    menu_button_pending = false;
-                }
-                
                 uint16_t sdlk = keycode_to_sdlk(keycode);
                 if (sdlk != 0) {
                     on_km_input(sdlk, pressed);
@@ -182,6 +169,10 @@ int fbdev_input::read_event(struct input_event *ev) {
         }
     }
     return -1;
+}
+
+ssize_t fbdev_input::read_event_from_fd(int fd, struct input_event *ev) {
+    return read(fd, ev, sizeof(*ev));
 }
 
 void fbdev_input::post_init() {
