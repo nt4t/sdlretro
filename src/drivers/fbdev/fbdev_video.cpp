@@ -120,6 +120,7 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
             char fps_text[32];
             int len = snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", current_fps);
             if (len > 0) {
+                set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, true);
             }
         }
