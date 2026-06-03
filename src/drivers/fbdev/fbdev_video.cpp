@@ -81,7 +81,6 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
 }
 
 void fbdev_video::render(const void *data, int width, int height, size_t pitch) {
-    LOG(TRACE, "render called: data={}, width={}, height={}, game_width={}", (void*)data, width, height, game_width);
     if (!data || game_width == 0) {
         drawn = false;
         return;
@@ -93,12 +92,12 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
         return;
     }
     
-    drawn = true;
+   drawn = true;
     frame_count++;
     
-    uint64_t now = 0;
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, reinterpret_cast<timespec*>(&now));
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t now = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
     if (last_fps_time == 0) {
         last_fps_time = now;
     }
@@ -121,7 +120,6 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
             char fps_text[32];
             int len = snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", current_fps);
             if (len > 0) {
-                LOG(TRACE, "Drawing FPS: {} at 10,10", current_fps);
                 set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, true);
             }
