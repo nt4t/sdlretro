@@ -83,6 +83,10 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
         game_frame_size = new_frame_size;
     }
     
+    if (!pixel_format_logged) {
+        LOG(INFO, "Core pixel format: {} (RGB1555=0, XRGB8888=1, RGB565=2)", pixel_format);
+        pixel_format_logged = true;
+    }
     LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
         width, height, max_width, max_height, pixel_format, scale, output_width, output_height);
     

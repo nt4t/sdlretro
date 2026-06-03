@@ -73,6 +73,7 @@ private:
     
     bool drawn = false;
     bool fps_enabled = false;
+    bool pixel_format_logged = false;
     int frame_count = 0;
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;
