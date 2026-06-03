@@ -172,13 +172,23 @@ void fbdev_video::fill_rectangle(int x, int y, int w, int h) {
     if (x + w > fb_width) draw_w = fb_width - x;
     if (y + h > fb_height) draw_h = fb_height - y;
     
+    uint32_t color = 0xFFFFFFFF;
+    if (fb_bpp == 32) {
+        color = (draw_a << 24) | (draw_r << 16) | (draw_g << 8) | draw_b;
+    } else {
+        uint8_t r5 = (draw_r >> 3);
+        uint8_t g6 = (draw_g >> 2);
+        uint8_t b5 = (draw_b >> 3);
+        color = (r5 << 11) | (g6 << 5) | b5;
+    }
+    
     if (fb_bpp == 32) {
         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
         ptr += y * fb_width + x;
         size_t row_pitch = fb_width;
         for (int row = 0; row < draw_h; row++) {
             for (int col = 0; col < draw_w; col++) {
-                ptr[row * row_pitch + col] = 0xFFFFFFFF;
+                ptr[row * row_pitch + col] = color;
             }
         }
     } else {
@@ -187,7 +197,7 @@ void fbdev_video::fill_rectangle(int x, int y, int w, int h) {
         size_t row_pitch = fb_width;
         for (int row = 0; row < draw_h; row++) {
             for (int col = 0; col < draw_w; col++) {
-                ptr[row * row_pitch + col] = 0xFFFF;
+                ptr[row * row_pitch + col] = static_cast<uint16_t>(color);
             }
         }
     }
@@ -222,9 +232,38 @@ void fbdev_video::get_text_width_and_height(const char *text, int &w, int &t, in
     b = max_height;
 }
 
+void fbdev_video::gui_popup() {
+    clear();
+}
+
+void fbdev_video::gui_leave() {
+}
+
+void fbdev_video::set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    draw_r = r;
+    draw_g = g;
+    draw_b = b;
+    draw_a = a;
+}
+
 void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool shadow) {
     int current_x = x;
     int current_y = y;
+    
+    uint32_t text_color = 0xFFFFFFFF;
+    if (fb_bpp == 32) {
+        text_color = (draw_a << 24) | (draw_r << 16) | (draw_g << 8) | draw_b;
+    } else {
+        uint8_t r5 = (draw_r >> 3);
+        uint8_t g6 = (draw_g >> 2);
+        uint8_t b5 = (draw_b >> 3);
+        text_color = (r5 << 11) | (g6 << 5) | b5;
+    }
+    
+    uint32_t shadow_color = 0x30303030;
+    if (fb_bpp == 16) {
+        shadow_color = 0x7BEF;
+    }
     
     for (const char *c = text; *c; c++) {
         if (*c == '\n') {
@@ -246,11 +285,11 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                         if (fb_bpp == 32) {
                             uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
                             ptr += (current_y + py + 1) * fb_width + (current_x + px + 1);
-                            *ptr = 0x30303030;
+                            *ptr = shadow_color;
                         } else {
                             uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
                             ptr += (current_y + py + 1) * fb_width + (current_x + px + 1);
-                            *ptr = 0x7BEF;
+                            *ptr = static_cast<uint16_t>(shadow_color);
                         }
                     }
                 }
@@ -264,11 +303,11 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                     if (fb_bpp == 32) {
                         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
                         ptr += (current_y + py) * fb_width + (current_x + px);
-                        *ptr = 0xFFFFFFFF;
+                        *ptr = text_color;
                     } else {
                         uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
                         ptr += (current_y + py) * fb_width + (current_x + px);
-                        *ptr = 0xFFFF;
+                        *ptr = static_cast<uint16_t>(text_color);
                     }
                 }
             }

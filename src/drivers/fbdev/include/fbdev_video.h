@@ -29,8 +29,13 @@ public:
     void get_text_width_and_height(const char *text, int &w, int &t, int &b) const override;
     void fill_rectangle(int x, int y, int w, int h) override;
 
+    void gui_popup() override;
+    void gui_leave() override;
+
     void set_fps_enabled(bool enabled) { fps_enabled = enabled; }
     bool get_fps_enabled() const { return fps_enabled; }
+
+    void set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override;
 
 private:
     void draw_text_impl(int x, int y, const char *text, int width, bool shadow);
@@ -67,6 +72,11 @@ private:
     int frame_count = 0;
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;
+    
+    uint8_t draw_r = 255;
+    uint8_t draw_g = 255;
+    uint8_t draw_b = 255;
+    uint8_t draw_a = 255;
 };
 
 }
