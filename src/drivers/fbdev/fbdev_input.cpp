@@ -148,9 +148,19 @@ void fbdev_input::poll_events() {
         while ((bytes = read(fd, &ev, sizeof(ev))) >= (ssize_t)sizeof(ev)) {
             if (ev.type == EV_KEY) {
                 uint16_t keycode = ev.code;
+                bool pressed = ev.value != 0;
+                
+                if (pressed && keycode == KEY_F1) {
+                    if (!menu_button_pressed)
+                        menu_button_pressed = true;
+                    else
+                        menu_button_pressed = true;
+                } else if (pressed && keycode == KEY_ESC) {
+                    menu_button_pressed = true;
+                }
+                
                 uint16_t sdlk = keycode_to_sdlk(keycode);
                 if (sdlk != 0) {
-                    bool pressed = ev.value != 0;
                     on_km_input(sdlk, pressed);
                 }
             }
