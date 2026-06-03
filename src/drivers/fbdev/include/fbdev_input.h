@@ -5,6 +5,7 @@
 #include <linux/input.h>
 
 #include <cstdint>
+#include <array>
 #include <vector>
 #include <string>
 
@@ -31,6 +32,7 @@ private:
 
     std::vector<int> event_fds;
     int max_fd = -1;
+    std::array<uint16_t, 16> keymap = {};
 };
 
 }
