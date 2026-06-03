@@ -26,7 +26,7 @@ public:
     int read_event(struct input_event *ev);
     void poll_events();
     bool get_menu_button_pressed() const { return menu_button_pressed; }
-    void reset_menu_button() { menu_button_pressed = false; }
+    void reset_menu_button() { menu_button_pressed = false; menu_button_pending = false; }
 
 private:
     int open_devices();
@@ -36,6 +36,7 @@ private:
     int max_fd = -1;
     std::array<uint16_t, 16> keymap = {};
     bool menu_button_pressed = false;
+    bool menu_button_pending = false;
 };
 
 }
