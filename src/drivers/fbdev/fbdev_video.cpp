@@ -289,28 +289,58 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
 }
 
 void fbdev_video::render_1to1(const void *data, int width, int height, size_t pitch) {
-    uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
-    dest += (fb_height - height) / 2 * fb_width + (fb_width - width) / 2;
+    int offset_x = (fb_width - width) / 2;
+    int offset_y = (fb_height - height) / 2;
     
-    if (game_pixel_format == 1) {
-        const uint32_t *src = static_cast<const uint32_t*>(data);
-        size_t input_row_bytes = pitch;
+    if (fb_bpp == 32) {
+        uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
+        dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
-        for (int h = 0; h < height; h++) {
-            convert_xrgb8888_to_rgb565(src, dest, width);
-            src += input_row_bytes / 4;
-            dest += output_pitch;
+        if (game_pixel_format == 1) {
+            const uint32_t *src = static_cast<const uint32_t*>(data);
+            size_t input_row_bytes = pitch;
+            for (int h = 0; h < height; h++) {
+                memcpy(dest, src, width * sizeof(uint32_t));
+                src += input_row_bytes / 4;
+                dest += output_pitch;
+            }
+        } else {
+            const uint16_t *src = static_cast<const uint16_t*>(data);
+            size_t input_row_bytes = pitch;
+            for (int h = 0; h < height; h++) {
+                for (int x = 0; x < width; x++) {
+                    uint16_t p16 = src[x];
+                    uint16_t r = (p16 >> 10) & 0x1F;
+                    uint16_t g = (p16 >> 5) & 0x1F;
+                    uint16_t b = p16 & 0x1F;
+                    dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                }
+                src += input_row_bytes / 2;
+                dest += output_pitch;
+            }
         }
     } else {
-        const uint16_t *src = static_cast<const uint16_t*>(data);
-        size_t input_row_bytes = pitch;
+        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
+        dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
-        for (int h = 0; h < height; h++) {
-            memcpy(dest, src, width * sizeof(uint16_t));
-            src += input_row_bytes / 2;
-            dest += output_pitch;
+        if (game_pixel_format == 1) {
+            const uint32_t *src = static_cast<const uint32_t*>(data);
+            size_t input_row_bytes = pitch;
+            for (int h = 0; h < height; h++) {
+                convert_xrgb8888_to_rgb565(src, dest, width);
+                src += input_row_bytes / 4;
+                dest += output_pitch;
+            }
+        } else {
+            const uint16_t *src = static_cast<const uint16_t*>(data);
+            size_t input_row_bytes = pitch;
+            for (int h = 0; h < height; h++) {
+                memcpy(dest, src, width * sizeof(uint16_t));
+                src += input_row_bytes / 2;
+                dest += output_pitch;
+            }
         }
     }
 }
@@ -321,51 +351,101 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
     int offset_x = (fb_width - scaled_w) / 2;
     int offset_y = (fb_height - scaled_h) / 2;
     
-    uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
-    dest += offset_y * fb_width + offset_x;
-    size_t dest_pitch = fb_width;
-    
-    if (game_pixel_format == 1) {
-        const uint32_t *src = static_cast<const uint32_t*>(data);
-        size_t input_row_bytes = pitch;
+    if (fb_bpp == 32) {
+        uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
+        dest += offset_y * fb_width + offset_x;
+        size_t dest_pitch = fb_width;
         
-        for (int y = 0; y < height; y++) {
-            const uint32_t *src_row = src + y * (input_row_bytes / 4);
+        if (game_pixel_format == 1) {
+            const uint32_t *src = static_cast<const uint32_t*>(data);
+            size_t input_row_bytes = pitch;
             
-            for (int x = 0; x < width; x++) {
-                uint32_t p = src_row[x];
-                uint16_t r = (p >> 16) & 0x1F;
-                uint16_t g = (p >> 8) & 0x3F;
-                uint16_t b = p & 0x1F;
-                uint16_t pix = (r << 11) | (g << 5) | b;
+            for (int y = 0; y < height; y++) {
+                const uint32_t *src_row = src + y * (input_row_bytes / 4);
                 
-                for (int sx = 0; sx < scale; sx++) {
-                    h_line_16[x * scale + sx] = pix;
+                for (int x = 0; x < width; x++) {
+                    uint32_t p = src_row[x];
+                    for (int sx = 0; sx < scale; sx++) {
+                        h_line_32[x * scale + sx] = p;
+                    }
+                }
+                
+                for (int sy = 0; sy < scale; sy++) {
+                    memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
+                    dest += dest_pitch;
                 }
             }
+        } else {
+            const uint16_t *src = static_cast<const uint16_t*>(data);
+            size_t input_row_bytes = pitch;
             
-            for (int sy = 0; sy < scale; sy++) {
-                memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
-                dest += dest_pitch;
+            for (int y = 0; y < height; y++) {
+                const uint16_t *src_row = src + y * (input_row_bytes / 2);
+                
+                for (int x = 0; x < width; x++) {
+                    uint16_t p16 = src_row[x];
+                    uint16_t r = (p16 >> 10) & 0x1F;
+                    uint16_t g = (p16 >> 5) & 0x1F;
+                    uint16_t b = p16 & 0x1F;
+                    h_line_32[x * scale] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                    for (int sx = 1; sx < scale; sx++) {
+                        h_line_32[x * scale + sx] = h_line_32[x * scale];
+                    }
+                }
+                
+                for (int sy = 0; sy < scale; sy++) {
+                    memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
+                    dest += dest_pitch;
+                }
             }
         }
     } else {
-        const uint16_t *src = static_cast<const uint16_t*>(data);
-        size_t input_row_bytes = pitch;
+        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
+        dest += offset_y * fb_width + offset_x;
+        size_t dest_pitch = fb_width;
         
-        for (int y = 0; y < height; y++) {
-            const uint16_t *src_row = src + y * (input_row_bytes / 2);
+        if (game_pixel_format == 1) {
+            const uint32_t *src = static_cast<const uint32_t*>(data);
+            size_t input_row_bytes = pitch;
             
-            for (int x = 0; x < width; x++) {
-                uint16_t pix = src_row[x];
-                for (int sx = 0; sx < scale; sx++) {
-                    h_line_16[x * scale + sx] = pix;
+            for (int y = 0; y < height; y++) {
+                const uint32_t *src_row = src + y * (input_row_bytes / 4);
+                
+                for (int x = 0; x < width; x++) {
+                    uint32_t p = src_row[x];
+                    uint16_t r = (p >> 16) & 0x1F;
+                    uint16_t g = (p >> 8) & 0x3F;
+                    uint16_t b = p & 0x1F;
+                    uint16_t pix = (r << 11) | (g << 5) | b;
+                    
+                    for (int sx = 0; sx < scale; sx++) {
+                        h_line_16[x * scale + sx] = pix;
+                    }
+                }
+                
+                for (int sy = 0; sy < scale; sy++) {
+                    memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
+                    dest += dest_pitch;
                 }
             }
+        } else {
+            const uint16_t *src = static_cast<const uint16_t*>(data);
+            size_t input_row_bytes = pitch;
             
-            for (int sy = 0; sy < scale; sy++) {
-                memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
-                dest += dest_pitch;
+            for (int y = 0; y < height; y++) {
+                const uint16_t *src_row = src + y * (input_row_bytes / 2);
+                
+                for (int x = 0; x < width; x++) {
+                    uint16_t pix = src_row[x];
+                    for (int sx = 0; sx < scale; sx++) {
+                        h_line_16[x * scale + sx] = pix;
+                    }
+                }
+                
+                for (int sy = 0; sy < scale; sy++) {
+                    memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
+                    dest += dest_pitch;
+                }
             }
         }
     }
