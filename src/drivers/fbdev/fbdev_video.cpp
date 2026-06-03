@@ -29,6 +29,7 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
     frame_count = 0;
     last_fps_time = 0;
     
+    memset(fb_ptr, 0, fb_size);
     LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}", fb_width, fb_height, fb_bpp, fb_pitch);
 }
 
