@@ -109,4 +109,16 @@ Add a Linux framebuffer renderer that outputs directly to `/dev/fb0`, enabling s
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| - | - | - |
+| poll_events() not found on input_base | Used input_poll() + cast to fbdev_input* | Correct: input_base has input_poll(), not poll_events() |
+| INFO not declared | Added #include <logger.h> | LOG(INFO, ...) requires logger.h |
+| frame_drawn() redefinition | Removed inline definition from header | frame_drawn() defined in cpp, not header |
+| get_pixel_font_data() not declared | Added inline function after bmfont.inl | Font data shared via bmfont.inl copy from sdl1 |
+| input_event incomplete type | Added #include <linux/input.h> to header | Needed for struct input_event declaration |
+| keymap not declared | Added std::array<uint16_t, 16> keymap member | Keymap needed for game controller mapping |
+| fb_var_screeninfo passed by reference causing wrong values | Pass by value instead of reference | Reference to local variable causes dangling pointer |
+| LOG format specifiers not working (showing %d literally) | Changed %d/%s/%zu to {} placeholders | LOG macro uses fmt-style {} not printf-style %d |
+| Segmentation fault on startup | Added stub fbdev_audio backend | driver_base::init() calls audio->start() which crashed when audio was nullptr |
+| Two images with wrong colors | Handle 32bpp XRGB8888 framebuffer correctly | Was casting fb_ptr to uint16_t* and writing 16-bit pixels to 32-bit buffer |
+| F1 key causes quit instead of menu | Match SDL2 F1 handling pattern | First F1 sets menu_button_pressed flag (menu opens in run loop), second F1 returns true (exits) |
+| ESC key not working | Events double-consumed by poll_events + process_events | Store events in poll_events(), process once in process_events() |
+| Compilation error: read_event_from_fd not declared | Removed unused read_event_from_fd implementation | Method was removed from header but cpp still had definition |
