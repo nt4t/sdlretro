@@ -112,7 +112,7 @@ int fbdev_input::open_devices() {
             continue;
         }
         
-        LOG(INFO, "fbdev_input: Found device: %s (%s)", entry->d_name, name);
+        LOG(INFO, "fbdev_input: Found device: {} ({})", entry->d_name, name);
         event_fds.push_back(fd);
         
         if (fd > max_fd) max_fd = fd;

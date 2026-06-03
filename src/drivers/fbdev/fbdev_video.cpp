@@ -29,7 +29,7 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
     frame_count = 0;
     last_fps_time = 0;
     
-    LOG(INFO, "fbdev_video: %dx%d, %dbpp, pitch=%zu", fb_width, fb_height, fb_bpp, fb_pitch);
+    LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}", fb_width, fb_height, fb_bpp, fb_pitch);
 }
 
 fbdev_video::~fbdev_video() {
@@ -74,7 +74,7 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
         h_line_size = max_line_pixels;
     }
     
-    LOG(INFO, "fbdev_video: game %dx%d, max %dx%d, fmt=%u, scale=%d, output %dx%d",
+    LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
         width, height, max_width, max_height, pixel_format, scale, output_width, output_height);
     
     return true;

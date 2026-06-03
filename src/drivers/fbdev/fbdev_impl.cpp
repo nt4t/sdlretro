@@ -54,7 +54,7 @@ fbdev_impl::fbdev_impl() {
     input = std::make_shared<fbdev_input>();
     input->post_init();
     
-    LOG(INFO, "Render backend: fbdev (%dx%d, %dbpp)", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel);
+    LOG(INFO, "Render backend: fbdev ({}x{}, {}bpp)", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel);
 }
 
 fbdev_impl::~fbdev_impl() {
