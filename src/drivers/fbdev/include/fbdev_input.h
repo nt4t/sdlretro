@@ -2,6 +2,8 @@
 
 #include "input_base.h"
 
+#include <linux/input.h>
+
 #include <cstdint>
 #include <vector>
 #include <string>
