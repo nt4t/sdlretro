@@ -8,6 +8,9 @@
 #if SDLRETRO_FRONTEND == 2
 #include <sdl2_impl.h>
 #endif
+#if SDLRETRO_FRONTEND == 3
+#include <fbdev_impl.h>
+#endif
 #include <i18n.h>
 #include <core_manager.h>
 #include <helper.h>
@@ -98,6 +101,9 @@ int program(int argc, char *argv[]) {
 #endif
 #if SDLRETRO_FRONTEND == 2
     auto impl = drivers::create_driver<drivers::sdl2_impl>();
+#endif
+#if SDLRETRO_FRONTEND == 3
+    auto impl = drivers::create_driver<drivers::fbdev_impl>();
 #endif
     if (!impl) {
         LOG(ERROR, "Unable to create driver!");

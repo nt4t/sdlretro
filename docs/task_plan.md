@@ -24,14 +24,14 @@ Add a Linux framebuffer renderer that outputs directly to `/dev/fb0`, enabling s
 ## Phases
 
 ### Phase 1: Create fbdev driver skeleton
-- [ ] Create `src/drivers/fbdev/` directory structure
-- [ ] Create `fbdev_impl.h` - fbdev_impl class inherits driver_base
-- [ ] Create `fbdev_impl.cpp` - opens `/dev/fb0`, creates fbdev_video and fbdev_input
-- [ ] Create `fbdev_video.h` - fbdev_video class inherits video_base
-- [ ] Create `fbdev_video.cpp` - implements video_base with /dev/fb0 mmap
-- [ ] Create `fbdev_input.h` - fbdev_input class inherits input_base
-- [ ] Create `fbdev_input.cpp` - reads from `/dev/input/event*` via evdev
-- [ ] Create `CMakeLists.txt` for fbdev driver library
+- [x] Create `src/drivers/fbdev/` directory structure
+- [x] Create `fbdev_impl.h` - fbdev_impl class inherits driver_base
+- [x] Create `fbdev_impl.cpp` - opens `/dev/fb0`, creates fbdev_video and fbdev_input
+- [x] Create `fbdev_video.h` - fbdev_video class inherits video_base
+- [x] Create `fbdev_video.cpp` - implements video_base with /dev/fb0 mmap
+- [x] Create `fbdev_input.h` - fbdev_input class inherits input_base
+- [x] Create `fbdev_input.cpp` - reads from `/dev/input/event*` via evdev
+- [x] Create `CMakeLists.txt` for fbdev driver library
 
 ### Phase 2: Video backend implementation
 - [ ] Implement `window_resized()` - reopen `/dev/fb0` at new resolution
