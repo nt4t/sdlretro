@@ -16,7 +16,7 @@ inline const font_data_t &get_pixel_font_data(uint8_t c) {
     return font_big_data[c];
 }
 
-fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, const struct fb_var_screeninfo &vinfo)
+fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo)
     : fb_fd(fb_fd), fb_ptr(fb_ptr), fb_size(fb_size),
       fb_width(vinfo.xres), fb_height(vinfo.yres),
       fb_bpp(vinfo.bits_per_pixel), fb_pitch(vinfo.xres * vinfo.bits_per_pixel / 8) {
