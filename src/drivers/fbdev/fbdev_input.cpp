@@ -165,10 +165,6 @@ int fbdev_input::read_event(struct input_event *ev) {
     return -1;
 }
 
-ssize_t fbdev_input::read_event_from_fd(int fd, struct input_event *ev) {
-    return read(fd, ev, sizeof(*ev));
-}
-
 void fbdev_input::post_init() {
     input_base::post_init();
     
