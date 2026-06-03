@@ -1,6 +1,7 @@
 #include "fbdev_input.h"
 
 #include <cfg.h>
+#include <logger.h>
 
 #include <linux/input.h>
 #include <sys/stat.h>
