@@ -36,6 +36,7 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
 fbdev_video::~fbdev_video() {
     delete[] h_line_16;
     delete[] h_line_32;
+    delete[] static_cast<uint8_t*>(game_frame_buffer);
 }
 
 void fbdev_video::window_resized(int width, int height, bool fullscreen) {
@@ -66,13 +67,20 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
         output_height = height;
     }
     
-    size_t max_line_pixels = static_cast<size_t>(width) * scale;
+     size_t max_line_pixels = static_cast<size_t>(width) * scale;
     if (max_line_pixels > h_line_size) {
         delete[] h_line_16;
         delete[] h_line_32;
         h_line_16 = new uint16_t[max_line_pixels];
         h_line_32 = new uint32_t[max_line_pixels];
         h_line_size = max_line_pixels;
+    }
+    
+    size_t new_frame_size = fb_width * fb_height * (fb_bpp == 32 ? 4 : 2);
+    if (new_frame_size != game_frame_size) {
+        delete[] static_cast<uint8_t*>(game_frame_buffer);
+        game_frame_buffer = new uint8_t[new_frame_size];
+        game_frame_size = new_frame_size;
     }
     
     LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
@@ -103,10 +111,24 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
         last_fps_time = now;
     }
     
-    if (scaling_mode == 0 && scale > 1) {
+     if (scaling_mode == 0 && scale > 1) {
         render_scaled(data, width, height, pitch);
     } else {
         render_1to1(data, width, height, pitch);
+    }
+    
+    if (game_frame_buffer && game_frame_size > 0) {
+        if (fb_bpp == 32) {
+            uint32_t *src = static_cast<uint32_t*>(fb_ptr);
+            uint32_t *dst = static_cast<uint32_t*>(game_frame_buffer);
+            size_t copy_pixels = fb_width * fb_height;
+            memcpy(dst, src, copy_pixels * sizeof(uint32_t));
+        } else {
+            uint16_t *src = static_cast<uint16_t*>(fb_ptr);
+            uint16_t *dst = static_cast<uint16_t*>(game_frame_buffer);
+            size_t copy_pixels = fb_width * fb_height;
+            memcpy(dst, src, copy_pixels * sizeof(uint16_t));
+        }
     }
     
     if (fps_enabled) {
@@ -246,6 +268,25 @@ void fbdev_video::gui_popup() {
 }
 
 void fbdev_video::gui_leave() {
+}
+
+void fbdev_video::gui_predraw() {
+    if (!game_frame_buffer || game_frame_size == 0) {
+        return;
+    }
+    
+    size_t fb_pixels = fb_width * fb_height;
+    if (fb_bpp == 32) {
+        uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
+        uint32_t *src = static_cast<uint32_t*>(game_frame_buffer);
+        size_t copy_pixels = fb_pixels < game_frame_size / sizeof(uint32_t) ? fb_pixels : game_frame_size / sizeof(uint32_t);
+        memcpy(dest, src, copy_pixels * sizeof(uint32_t));
+    } else {
+        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
+        uint16_t *src = static_cast<uint16_t*>(game_frame_buffer);
+        size_t copy_pixels = fb_pixels < game_frame_size / sizeof(uint16_t) ? fb_pixels : game_frame_size / sizeof(uint16_t);
+        memcpy(dest, src, copy_pixels * sizeof(uint16_t));
+    }
 }
 
 void fbdev_video::set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {

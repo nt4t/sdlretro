@@ -31,6 +31,7 @@ public:
 
     void gui_popup() override;
     void gui_leave() override;
+    void gui_predraw() override;
 
     void set_fps_enabled(bool enabled) { fps_enabled = enabled; }
     bool get_fps_enabled() const { return fps_enabled; }
@@ -66,6 +67,9 @@ private:
     uint16_t *h_line_16 = nullptr;
     uint32_t *h_line_32 = nullptr;
     size_t h_line_size = 0;
+    
+    void *game_frame_buffer = nullptr;
+    size_t game_frame_size = 0;
     
     bool drawn = false;
     bool fps_enabled = false;
