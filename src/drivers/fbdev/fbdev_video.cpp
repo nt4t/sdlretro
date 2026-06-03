@@ -2,6 +2,7 @@
 
 #include <cfg.h>
 #include "bmfont.inl"
+#include <logger.h>
 
 #include <cstdlib>
 #include <cstring>
