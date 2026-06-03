@@ -84,6 +84,10 @@ bool fbdev_impl::process_events() {
             } else if (pressed && keycode == KEY_ESC) {
                 fb_input->clear_stored_events();
                 return true;
+            } else if (pressed && keycode == KEY_F3) {
+                auto *fb_video = static_cast<fbdev_video*>(video.get());
+                fb_video->set_fps_enabled(!fb_video->get_fps_enabled());
+                LOG(INFO, "FPS display: {}", fb_video->get_fps_enabled() ? "on" : "off");
             }
             
             uint16_t sdlk = fb_input->keycode_to_sdlk(keycode);
