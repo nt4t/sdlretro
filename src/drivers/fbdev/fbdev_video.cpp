@@ -286,11 +286,11 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                     if ((src[px / 8] >> (7 - (px % 8))) & 1) {
                         if (fb_bpp == 32) {
                             uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-                            ptr += (current_y + py + 1) * fb_width + (current_x + px + 1);
+                            ptr += (current_y + py + fd.y + 1) * fb_width + (current_x + px + fd.x + 1);
                             *ptr = shadow_color;
                         } else {
                             uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-                            ptr += (current_y + py + 1) * fb_width + (current_x + px + 1);
+                            ptr += (current_y + py + fd.y + 1) * fb_width + (current_x + px + fd.x + 1);
                             *ptr = static_cast<uint16_t>(shadow_color);
                         }
                     }
@@ -304,11 +304,11 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                 if ((src[px / 8] >> (7 - (px % 8))) & 1) {
                     if (fb_bpp == 32) {
                         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-                        ptr += (current_y + py) * fb_width + (current_x + px);
+                        ptr += (current_y + py + fd.y) * fb_width + (current_x + px + fd.x);
                         *ptr = text_color;
                     } else {
                         uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-                        ptr += (current_y + py) * fb_width + (current_x + px);
+                        ptr += (current_y + py + fd.y) * fb_width + (current_x + px + fd.x);
                         *ptr = static_cast<uint16_t>(text_color);
                     }
                 }
