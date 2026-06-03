@@ -72,6 +72,7 @@ private:
     int frame_count = 0;
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;
+    uint64_t last_console_fps_time = 0;
     
     uint8_t draw_r = 255;
     uint8_t draw_g = 255;

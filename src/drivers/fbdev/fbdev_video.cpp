@@ -115,6 +115,12 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
             current_fps = static_cast<float>(frame_count) * 1000000000.0f / static_cast<float>(elapsed);
             frame_count = 0;
             last_fps_time = now;
+            
+            uint64_t elapsed_console = now - last_console_fps_time;
+            if (elapsed_console >= 10000000000ULL) {
+                LOG(INFO, "FPS: {}", current_fps);
+                last_console_fps_time = now;
+            }
         }
         
         if (current_fps > 0.f) {
