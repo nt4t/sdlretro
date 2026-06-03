@@ -115,17 +115,18 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
             frame_count = 0;
             last_fps_time = now;
         }
+        
+        if (current_fps > 0.f) {
+            char fps_text[32];
+            int len = snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", current_fps);
+            if (len > 0) {
+                draw_text(10, 10, fps_text, 0, true);
+            }
+        }
     }
 }
 
 void fbdev_video::frame_render() {
-    if (fps_enabled && current_fps > 0.f) {
-        char fps_text[32];
-        int len = snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", current_fps);
-        if (len > 0) {
-            draw_text(10, 10, fps_text, 0, true);
-        }
-    }
 }
 
 bool fbdev_video::frame_drawn() {
