@@ -295,22 +295,7 @@ void fbdev_video::gui_leave() {
 }
 
 void fbdev_video::gui_predraw() {
-    if (!game_frame_buffer || game_frame_size == 0) {
-        return;
-    }
-    
-    size_t fb_pixels = fb_width * fb_height;
-    if (fb_bpp == 32) {
-        uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
-        uint32_t *src = static_cast<uint32_t*>(game_frame_buffer);
-        size_t copy_pixels = fb_pixels < game_frame_size / sizeof(uint32_t) ? fb_pixels : game_frame_size / sizeof(uint32_t);
-        memcpy(dest, src, copy_pixels * sizeof(uint32_t));
-    } else {
-        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
-        uint16_t *src = static_cast<uint16_t*>(game_frame_buffer);
-        size_t copy_pixels = fb_pixels < game_frame_size / sizeof(uint16_t) ? fb_pixels : game_frame_size / sizeof(uint16_t);
-        memcpy(dest, src, copy_pixels * sizeof(uint16_t));
-    }
+    clear();
 }
 
 void fbdev_video::set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -323,6 +308,10 @@ void fbdev_video::set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool shadow) {
     int current_x = x;
     int current_y = y;
+    int max_width = width;
+    if (max_width == 0) {
+        max_width = fb_width - x;
+    }
     
     uint32_t text_color = 0xFFFFFFFF;
     if (fb_bpp == 32) {
@@ -350,6 +339,9 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
         if (idx >= 128) idx = 0;
         
         const font_data_t &fd = get_pixel_font_data(idx);
+        if (max_width > 0 && fd.sw > max_width) {
+            break;
+        }
         size_t step = (fd.w + 7) >> 3;
         
         if (shadow) {
@@ -405,6 +397,9 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
         }
         
         current_x += fd.sw;
+        if (max_width > 0) {
+            max_width -= fd.sw;
+        }
     }
 }
 
