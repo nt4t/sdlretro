@@ -175,6 +175,25 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
                 draw_text(8, 8, clear_text, 0, false);
                 set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, false);
+                
+                int font_y = 30;
+                int font_x = 10;
+                for (int i = 0; i < 128; i++) {
+                    char ch = static_cast<char>(i);
+                    draw_text(font_x, font_y, &ch, 0, false);
+                    char code[4];
+                    int len = snprintf(code, sizeof(code), "%d", i);
+                    set_draw_color(128, 128, 128, 255);
+                    draw_text(font_x, font_y + 10, code, 0, false);
+                    set_draw_color(255, 255, 255, 255);
+                    int idx = i;
+                    const font_data_t &fd = get_pixel_font_data(idx);
+                    font_x += fd.sw;
+                    if (font_x > fb_width - 20) {
+                        font_x = 10;
+                        font_y += 25;
+                    }
+                }
             }
         }
     }
