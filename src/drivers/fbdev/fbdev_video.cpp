@@ -171,17 +171,10 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
                     clear_w += fd.sw;
                 }
                 
-               set_draw_color(0, 0, 0, 255);
+              set_draw_color(0, 0, 0, 255);
                 draw_text(8, 8, clear_text, 0, false);
                 set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, false);
-                
-                set_draw_color(255, 0, 0, 255);
-                draw_text(10, 50, "ABC", 0, false);
-                set_draw_color(0, 255, 0, 255);
-                draw_text(10, 70, "abc", 0, false);
-                set_draw_color(0, 0, 255, 255);
-                draw_text(10, 90, "123", 0, false);
             }
         }
     }
