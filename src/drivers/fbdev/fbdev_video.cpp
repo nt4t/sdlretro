@@ -153,10 +153,15 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
             char fps_text[32];
             int len = snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", current_fps);
             if (len > 0) {
-                int tw = 0, tt = 255, tb = -255;
-                get_text_width_and_height(fps_text, tw, tt, tb);
+                int tw = 0;
+                for (const char *c = fps_text; *c; c++) {
+                    int idx = static_cast<unsigned char>(*c);
+                    if (idx >= 128) idx = 0;
+                    const font_data_t &fd = get_pixel_font_data(idx);
+                    tw += fd.sw;
+                }
                 set_draw_color(0, 0, 0, 255);
-                fill_rectangle(8, 8 + tt, tw + 4, tb - tt + 4);
+                fill_rectangle(8, 8, tw + 8, 14);
                 set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, true);
             }
