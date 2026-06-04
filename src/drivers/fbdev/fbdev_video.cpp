@@ -417,32 +417,31 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
     int offset_x = (fb_width - width) / 2;
     int offset_y = (fb_height - height) / 2;
     
-    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
-    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
         if (game_pixel_format == 1) {
-            const uint32_t *src = static_cast<const uint32_t*>(data);
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                memcpy(dest, src, width * sizeof(uint32_t));
-                src += width;
+                const uint32_t *src_row = static_cast<const uint32_t*>(src);
+                memcpy(dest, src_row, width * sizeof(uint32_t));
+                src += pitch;
                 dest += output_pitch;
             }
         } else {
-            const uint16_t *src = static_cast<const uint16_t*>(data);
-            size_t input_row_bytes = pitch;
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
+                const uint16_t *src_row = static_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
-                    uint16_t p16 = src[x];
+                    uint16_t p16 = src_row[x];
                     uint16_t r = (p16 >> 10) & 0x1F;
                     uint16_t g = (p16 >> 5) & 0x1F;
                     uint16_t b = p16 & 0x1F;
                     dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
                 }
-                src += input_row_bytes / 2;
+                src += pitch;
                 dest += output_pitch;
             }
         }
@@ -452,18 +451,19 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         size_t output_pitch = fb_width;
         
         if (game_pixel_format == 1) {
-            const uint32_t *src = static_cast<const uint32_t*>(data);
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                convert_xrgb8888_to_rgb565(src, dest, width);
-                src += width;
+                const uint32_t *src_row = static_cast<const uint32_t*>(src);
+                convert_xrgb8888_to_rgb565(src_row, dest, width);
+                src += pitch;
                 dest += output_pitch;
             }
         } else {
-            const uint16_t *src = static_cast<const uint16_t*>(data);
-            size_t input_row_bytes = pitch;
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                memcpy(dest, src, width * sizeof(uint16_t));
-                src += input_row_bytes / 2;
+                const uint16_t *src_row = static_cast<const uint16_t*>(src);
+                memcpy(dest, src_row, width * sizeof(uint16_t));
+                src += pitch;
                 dest += output_pitch;
             }
         }
@@ -482,10 +482,10 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         size_t dest_pitch = fb_width;
         
         if (game_pixel_format == 1) {
-            const uint32_t *src = static_cast<const uint32_t*>(data);
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint32_t *src_row = src + y * width;
+                const uint32_t *src_row = static_cast<const uint32_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
@@ -498,13 +498,14 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                     memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
                     dest += dest_pitch;
                 }
+                
+                src += pitch;
             }
         } else {
-            const uint16_t *src = static_cast<const uint16_t*>(data);
-            size_t input_row_bytes = pitch;
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint16_t *src_row = src + y * (input_row_bytes / 2);
+                const uint16_t *src_row = static_cast<const uint16_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint16_t p16 = src_row[x];
@@ -521,6 +522,8 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                     memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
                     dest += dest_pitch;
                 }
+                
+                src += pitch;
             }
         }
     } else {
@@ -529,10 +532,10 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         size_t dest_pitch = fb_width;
         
         if (game_pixel_format == 1) {
-            const uint32_t *src = static_cast<const uint32_t*>(data);
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint32_t *src_row = src + y * width;
+                const uint32_t *src_row = static_cast<const uint32_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
@@ -550,13 +553,14 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                     memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
                     dest += dest_pitch;
                 }
+                
+                src += pitch;
             }
         } else {
-            const uint16_t *src = static_cast<const uint16_t*>(data);
-            size_t input_row_bytes = pitch;
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint16_t *src_row = src + y * (input_row_bytes / 2);
+                const uint16_t *src_row = static_cast<const uint16_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint16_t pix = src_row[x];
@@ -569,6 +573,8 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                     memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
                     dest += dest_pitch;
                 }
+                
+                src += pitch;
             }
         }
     }
