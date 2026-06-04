@@ -99,12 +99,6 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
         return;
     }
     
-    static bool render_logged = false;
-    if (!render_logged) {
-        LOG(INFO, "First render: width={}, height={}, pitch={}, game_pixel_format={}", width, height, pitch, game_pixel_format);
-        render_logged = true;
-    }
-    
     if (skip_frame) {
         skip_frame = false;
         drawn = false;
@@ -423,12 +417,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
     int offset_x = (fb_width - width) / 2;
     int offset_y = (fb_height - height) / 2;
     
+    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (input_bpp == 32) {
             const uint32_t *src = static_cast<const uint32_t*>(data);
             size_t input_row_bytes = pitch;
             for (int h = 0; h < height; h++) {
@@ -456,7 +452,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (input_bpp == 32) {
             const uint32_t *src = static_cast<const uint32_t*>(data);
             size_t input_row_bytes = pitch;
             for (int h = 0; h < height; h++) {
@@ -482,12 +478,14 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
     int offset_x = (fb_width - scaled_w) / 2;
     int offset_y = (fb_height - scaled_h) / 2;
     
+    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_width + offset_x;
         size_t dest_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (input_bpp == 32) {
             const uint32_t *src = static_cast<const uint32_t*>(data);
             size_t input_row_bytes = pitch;
             
@@ -535,7 +533,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         dest += offset_y * fb_width + offset_x;
         size_t dest_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (input_bpp == 32) {
             const uint32_t *src = static_cast<const uint32_t*>(data);
             size_t input_row_bytes = pitch;
             
