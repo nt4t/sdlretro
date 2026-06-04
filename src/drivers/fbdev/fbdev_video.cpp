@@ -425,7 +425,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         if (game_pixel_format == 1) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                const uint32_t *src_row = static_cast<const uint32_t*>(src);
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 memcpy(dest, src_row, width * sizeof(uint32_t));
                 src += pitch;
                 dest += output_pitch;
@@ -433,7 +433,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                const uint16_t *src_row = static_cast<const uint16_t*>(src);
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t p16 = src_row[x];
                     uint16_t r = (p16 >> 10) & 0x1F;
@@ -453,7 +453,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         if (game_pixel_format == 1) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                const uint32_t *src_row = static_cast<const uint32_t*>(src);
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 convert_xrgb8888_to_rgb565(src_row, dest, width);
                 src += pitch;
                 dest += output_pitch;
@@ -461,7 +461,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                const uint16_t *src_row = static_cast<const uint16_t*>(src);
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 memcpy(dest, src_row, width * sizeof(uint16_t));
                 src += pitch;
                 dest += output_pitch;
@@ -485,7 +485,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
             const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint32_t *src_row = static_cast<const uint32_t*>(src);
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
@@ -505,7 +505,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
             const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint16_t *src_row = static_cast<const uint16_t*>(src);
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint16_t p16 = src_row[x];
@@ -535,7 +535,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
             const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint32_t *src_row = static_cast<const uint32_t*>(src);
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
@@ -560,7 +560,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
             const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
-                const uint16_t *src_row = static_cast<const uint16_t*>(src);
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 
                 for (int x = 0; x < width; x++) {
                     uint16_t pix = src_row[x];
