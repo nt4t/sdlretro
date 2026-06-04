@@ -160,8 +160,19 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
                     const font_data_t &fd = get_pixel_font_data(idx);
                     tw += fd.sw;
                 }
+                
+                char clear_text[64] = {0};
+                int clear_w = 0;
+                int i = 0;
+                while (clear_w < tw + 8 && i < 63) {
+                    clear_text[i++] = '#';
+                    int idx = 35;
+                    const font_data_t &fd = get_pixel_font_data(idx);
+                    clear_w += fd.sw;
+                }
+                
                 set_draw_color(0, 0, 0, 255);
-                fill_rectangle(8, 8, tw + 8, 14);
+                draw_text(8, 8, clear_text, 0, false);
                 set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, false);
             }
