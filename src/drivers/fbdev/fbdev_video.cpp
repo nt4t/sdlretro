@@ -165,8 +165,8 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
                 int clear_w = 0;
                 int i = 0;
                 while (clear_w < tw + 8 && i < 63) {
-                    clear_text[i++] = '#';
-                    int idx = 35;
+                    clear_text[i++] = 'W';
+                    int idx = 87;
                     const font_data_t &fd = get_pixel_font_data(idx);
                     clear_w += fd.sw;
                 }
