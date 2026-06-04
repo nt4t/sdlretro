@@ -84,7 +84,7 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
     }
     
     if (!pixel_format_logged) {
-        LOG(INFO, "Core pixel format: {} (RGB1555=0, XRGB8888=1, RGB565=2), fb_bpp={}", pixel_format, fb_bpp);
+        LOG(INFO, "Core pixel format: {} (RGB1555=0, XRGB8888=1, RGB565=2), fb_bpp={}, pitch={}", pixel_format, fb_bpp, fb_pitch);
         pixel_format_logged = true;
     }
     LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
@@ -97,6 +97,12 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
     if (!data || game_width == 0) {
         drawn = false;
         return;
+    }
+    
+    static bool render_logged = false;
+    if (!render_logged) {
+        LOG(INFO, "First render: width={}, height={}, pitch={}, game_pixel_format={}", width, height, pitch, game_pixel_format);
+        render_logged = true;
     }
     
     if (skip_frame) {
