@@ -422,9 +422,14 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         uint16_t r = (p >> 16) & 0x1F;
         uint16_t g = (p >> 8) & 0x3F;
         uint16_t b = p & 0x1F;
-        uint16_t result = (r << 11) | (g << 5) | b;
-        char buf[128];
-        snprintf(buf, sizeof(buf), "convert_xrgb8888_to_rgb565: input=0x%08X r=%u g=%u b=%u output=0x%04X", p, r, g, b, result);
+        uint32_t step1 = (uint32_t)r << 11;
+        uint32_t step2 = (uint32_t)g << 5;
+        uint32_t step3 = step1 | step2;
+        uint32_t step4 = step3 | b;
+        uint16_t result = static_cast<uint16_t>(step4);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "conv: in=0x%08X r=%u g=%u b=%u r<<11=0x%06X g<<5=0x%06X or=0x%06X final=0x%04X",
+            p, r, g, b, step1, step2, step3, result);
         LOG(INFO, "{}", buf);
     }
     for (int i = 0; i < pixels; i++) {
