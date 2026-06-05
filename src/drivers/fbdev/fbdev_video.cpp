@@ -644,11 +644,11 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
                     for (int sx = 0; sx < scale; sx++) {
-                        h_line_32[x * scale + sx] = p;
+                        this->h_line_32[x * scale + sx] = p;
                     }
                 }
                 for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
+                    memcpy(dest, this->h_line_32, scaled_w * sizeof(uint32_t));
                     dest += dest_pitch;
                 }
                 src += pitch;
@@ -662,13 +662,13 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                     uint16_t r = (p16 >> 10) & 0x1F;
                     uint16_t g = (p16 >> 5) & 0x1F;
                     uint16_t b = p16 & 0x1F;
-                    h_line_32[x * scale] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                    this->h_line_32[x * scale] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
                     for (int sx = 1; sx < scale; sx++) {
-                        h_line_32[x * scale + sx] = h_line_32[x * scale];
+                        this->h_line_32[x * scale + sx] = this->h_line_32[x * scale];
                     }
                 }
                 for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
+                    memcpy(dest, this->h_line_32, scaled_w * sizeof(uint32_t));
                     dest += dest_pitch;
                 }
                 src += pitch;
@@ -690,11 +690,11 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                     uint16_t b = p & 0x1F;
                     uint16_t pix = (r << 11) | (g << 5) | b;
                     for (int sx = 0; sx < scale; sx++) {
-                        h_line_16[x * scale + sx] = pix;
+                        this->h_line_16[x * scale + sx] = pix;
                     }
                 }
                 for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
+                    memcpy(dest, this->h_line_16, scaled_w * sizeof(uint16_t));
                     dest += dest_pitch;
                 }
                 src += pitch;
@@ -706,11 +706,11 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 for (int x = 0; x < width; x++) {
                     uint16_t pix = src_row[x];
                     for (int sx = 0; sx < scale; sx++) {
-                        h_line_16[x * scale + sx] = pix;
+                        this->h_line_16[x * scale + sx] = pix;
                     }
                 }
                 for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
+                    memcpy(dest, this->h_line_16, scaled_w * sizeof(uint16_t));
                     dest += dest_pitch;
                 }
                 src += pitch;
