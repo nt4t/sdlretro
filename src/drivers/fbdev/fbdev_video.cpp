@@ -441,7 +441,6 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         input_bpp = (game_pixel_format == 1) ? 32 : 16;
     }
     
-    static bool fb66_86_logged = false;
     int target_fb_x = 66;
     int target_fb_y = 86;
     int target_game_x = target_fb_x - offset_x;
@@ -461,8 +460,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                     if (game_pixel_format == 1 && p == 0xBDBEBD) {
                         LOG(INFO, "32->32 COPY: input=0x%08X output=0x%08X", p, p);
                     }
-                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
-                        fb66_86_logged = true;
+                    if (!this->core_pixel_logged && h == target_game_y && x == target_game_x) {
+                        this->core_pixel_logged = true;
+                        this->core_pixel_value = p;
+                        this->core_pixel_game_x = target_game_x;
+                        this->core_pixel_game_y = target_game_y;
+                        this->core_pixel_fb_x = target_fb_x;
+                        this->core_pixel_fb_y = target_fb_y;
+                        this->core_pixel_is_32 = true;
                         uint8_t r = p & 0xFF;
                         uint8_t g = (p >> 8) & 0xFF;
                         uint8_t b = (p >> 16) & 0xFF;
@@ -480,8 +485,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t p = src_row[x];
-                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
-                        fb66_86_logged = true;
+                    if (!this->core_pixel_logged && h == target_game_y && x == target_game_x) {
+                        this->core_pixel_logged = true;
+                        this->core_pixel_value = p;
+                        this->core_pixel_game_x = target_game_x;
+                        this->core_pixel_game_y = target_game_y;
+                        this->core_pixel_fb_x = target_fb_x;
+                        this->core_pixel_fb_y = target_fb_y;
+                        this->core_pixel_is_32 = false;
                         uint16_t r = (p >> 10) & 0x1F;
                         uint16_t g = (p >> 5) & 0x1F;
                         uint16_t b = p & 0x1F;
@@ -508,8 +519,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
-                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
-                        fb66_86_logged = true;
+                    if (!this->core_pixel_logged && h == target_game_y && x == target_game_x) {
+                        this->core_pixel_logged = true;
+                        this->core_pixel_value = p;
+                        this->core_pixel_game_x = target_game_x;
+                        this->core_pixel_game_y = target_game_y;
+                        this->core_pixel_fb_x = target_fb_x;
+                        this->core_pixel_fb_y = target_fb_y;
+                        this->core_pixel_is_32 = true;
                         uint16_t r = p & 0x1F;
                         uint16_t g = (p >> 8) & 0x3F;
                         uint16_t b = (p >> 16) & 0x1F;
@@ -530,8 +547,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t p = src_row[x];
-                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
-                        fb66_86_logged = true;
+                    if (!this->core_pixel_logged && h == target_game_y && x == target_game_x) {
+                        this->core_pixel_logged = true;
+                        this->core_pixel_value = p;
+                        this->core_pixel_game_x = target_game_x;
+                        this->core_pixel_game_y = target_game_y;
+                        this->core_pixel_fb_x = target_fb_x;
+                        this->core_pixel_fb_y = target_fb_y;
+                        this->core_pixel_is_32 = false;
                         LOG(INFO, "CORE OUTPUT at game({},{}) fb({},{}): input=0x{:04X} -> output=0x{:04X}", target_game_x, target_game_y, target_fb_x, target_fb_y, p, p);
                     }
                     dest[x] = src_row[x];
@@ -663,7 +686,7 @@ void fbdev_video::log_fb_pixel(int x, int y) {
     
     int start_fb_x = 34;
     int start_fb_y = 54;
-    for (int i = 0; i < 50; i++) {
+   for (int i = 0; i < 50; i++) {
         int fb_x = start_fb_x + i;
         int fb_y = start_fb_y + i;
         
@@ -691,6 +714,28 @@ void fbdev_video::log_fb_pixel(int x, int y) {
             uint8_t b8 = (b5 * 255) / 31;
             LOG(INFO, "FB PIXEL DIAG: idx={} fb=({},{}) value=0x{:04X} rgb565=({},{},{}) -> rgb8=({},{},{})", i, fb_x, fb_y, p, r5, g6, b5, r8, g8, b8);
         }
+    }
+    
+    if (this->core_pixel_logged) {
+        if (this->core_pixel_is_32) {
+            uint32_t p = static_cast<uint32_t>(this->core_pixel_value);
+            uint8_t r = p & 0xFF;
+            uint8_t g = (p >> 8) & 0xFF;
+            uint8_t b = (p >> 16) & 0xFF;
+            uint8_t a = (p >> 24) & 0xFF;
+            LOG(INFO, "CORE PIXEL at game({},{}) fb({},{}): value=0x{:08X} rgba=({},{},{},{})", this->core_pixel_game_x, this->core_pixel_game_y, this->core_pixel_fb_x, this->core_pixel_fb_y, p, r, g, b, a);
+        } else {
+            uint16_t p = static_cast<uint16_t>(this->core_pixel_value);
+            uint8_t r5 = (p >> 10) & 0x1F;
+            uint8_t g6 = (p >> 5) & 0x1F;
+            uint8_t b5 = p & 0x1F;
+            uint8_t r8 = (r5 * 255) / 31;
+            uint8_t g8 = (g6 * 255) / 63;
+            uint8_t b8 = (b5 * 255) / 31;
+            LOG(INFO, "CORE PIXEL at game({},{}) fb({},{}): value=0x{:04X} rgb1555=({},{},{}) -> rgb8=({},{},{})", this->core_pixel_game_x, this->core_pixel_game_y, this->core_pixel_fb_x, this->core_pixel_fb_y, p, r5, g6, b5, r8, g8, b8);
+        }
+    } else {
+        LOG(INFO, "CORE PIXEL: not captured yet (needs render first)");
     }
 }
 
