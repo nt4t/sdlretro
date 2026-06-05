@@ -77,17 +77,17 @@ private:
     bool fps_enabled = false;
     bool render_log_enabled = false;
     bool pixel_format_logged = false;
-    bool core_pixel_logged = false;
     int frame_count = 0;
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;
     uint64_t last_console_fps_time = 0;
-    uint64_t core_pixel_value = 0;
-    int core_pixel_game_x = 0;
-    int core_pixel_game_y = 0;
-    int core_pixel_fb_x = 0;
-    int core_pixel_fb_y = 0;
-    bool core_pixel_is_32 = false;
+    uint64_t core_pixel_values[50];
+    int core_pixel_fb_xs[50];
+    int core_pixel_fb_ys[50];
+    int core_pixel_game_xs[50];
+    int core_pixel_game_ys[50];
+    bool core_pixel_is_32s[50];
+    bool core_pixel_captured[50];
     
     uint8_t draw_r = 255;
     uint8_t draw_g = 255;
