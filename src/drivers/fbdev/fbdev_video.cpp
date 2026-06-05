@@ -420,21 +420,20 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         logged = true;
         uint32_t p = src[0];
         uint16_t r = (p >> 0) & 0x1F;
-        uint16_t g = (p >> 8) & 0x1F;
+        uint16_t g = (p >> 8) & 0x3F;
         uint16_t b = (p >> 16) & 0x1F;
-        uint16_t result565 = static_cast<uint16_t>((r << 11) | (g << 5) | b);
-        uint16_t result1555 = static_cast<uint16_t>((r << 10) | (g << 5) | b);
+        uint16_t result = static_cast<uint16_t>((r << 11) | (g << 5) | b);
         char buf[256];
-        snprintf(buf, sizeof(buf), "conv: in=0x%08X r=%u g=%u b=%u rgb565=0x%04X rgb1555=0x%04X",
-            p, r, g, b, result565, result1555);
+        snprintf(buf, sizeof(buf), "conv: in=0x%08X r=%u g=%u b=%u result=0x%04X",
+            p, r, g, b, result);
         LOG(INFO, "{}", buf);
     }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
         uint16_t r = (p >> 0) & 0x1F;
-        uint16_t g = (p >> 8) & 0x1F;
+        uint16_t g = (p >> 8) & 0x3F;
         uint16_t b = (p >> 16) & 0x1F;
-        dst[i] = (r << 10) | (g << 5) | b;
+        dst[i] = (r << 11) | (g << 5) | b;
     }
 }
 
