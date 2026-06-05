@@ -415,42 +415,6 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
 }
 
 void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels) {
-    static bool logged = false;
-    if (!logged) {
-        logged = true;
-        char buf[512];
-
-        // Find a non-gray pixel (where R!=G or G!=B)
-        bool found_colored = false;
-        int search_limit = pixels < 65536 ? pixels : 65536;
-        for (int i = 0; i < search_limit; i++) {
-            uint32_t p = src[i];
-            uint8_t r8 = (p >> 16) & 0xFF;
-            uint8_t g8 = (p >> 8) & 0xFF;
-            uint8_t b8 = p & 0xFF;
-            if (r8 != g8 || g8 != b8) {
-                uint16_t r_xrgb = (p >> 16) & 0x1F;
-                uint16_t g_xrgb = (p >> 8) & 0x3F;
-                uint16_t b_xrgb = p & 0x1F;
-                uint16_t res_xrgb = (r_xrgb << 11) | (g_xrgb << 5) | b_xrgb;
-
-                uint16_t r_abgr = p & 0x1F;
-                uint16_t g_abgr = (p >> 8) & 0x3F;
-                uint16_t b_abgr = (p >> 16) & 0x1F;
-                uint16_t res_abgr = (r_abgr << 11) | (g_abgr << 5) | b_abgr;
-
-                snprintf(buf, sizeof(buf), "COLORED pixel[%d]=0x%08X(r8=%u,g8=%u,b8=%u) xrgb: r=%u g=%u b=%u -> 0x%04X | abgr: r=%u g=%u b=%u -> 0x%04X",
-                    i, p, r8, g8, b8, r_xrgb, g_xrgb, b_xrgb, res_xrgb, r_abgr, g_abgr, b_abgr, res_abgr);
-                LOG(INFO, "{}", buf);
-                found_colored = true;
-                break;
-            }
-        }
-        if (!found_colored) {
-            snprintf(buf, sizeof(buf), "ALL pixels are gray in first %d", search_limit);
-            LOG(INFO, "{}", buf);
-        }
-    }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
         uint16_t r = (p >> 16) & 0x1F;
@@ -473,6 +437,45 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
 
     LOG(INFO, "render_1to1: fb_bpp={}, fb_pitch={}, fb_pitch_pixels={}, game_fmt={}, input_bpp={}",
         fb_bpp, fb_pitch, fb_pitch_pixels, game_pixel_format, input_bpp);
+
+    // Log a colored pixel for format 1 debugging
+    if (game_pixel_format == 1 && input_bpp == 32) {
+        static bool pixel_logged = false;
+        if (!pixel_logged) {
+            pixel_logged = true;
+            char buf[512];
+            const uint32_t *src_data = static_cast<const uint32_t*>(data);
+            int search_limit = width * height < 65536 ? width * height : 65536;
+            bool found_colored = false;
+            for (int i = 0; i < search_limit; i++) {
+                uint32_t p = src_data[i];
+                uint8_t r8 = (p >> 16) & 0xFF;
+                uint8_t g8 = (p >> 8) & 0xFF;
+                uint8_t b8 = p & 0xFF;
+                if (r8 != g8 || g8 != b8) {
+                    uint16_t r_xrgb = (p >> 16) & 0x1F;
+                    uint16_t g_xrgb = (p >> 8) & 0x3F;
+                    uint16_t b_xrgb = p & 0x1F;
+                    uint16_t res_xrgb = (r_xrgb << 11) | (g_xrgb << 5) | b_xrgb;
+
+                    uint16_t r_abgr = p & 0x1F;
+                    uint16_t g_abgr = (p >> 8) & 0x3F;
+                    uint16_t b_abgr = (p >> 16) & 0x1F;
+                    uint16_t res_abgr = (r_abgr << 11) | (g_abgr << 5) | b_abgr;
+
+                    snprintf(buf, sizeof(buf), "COLORED pixel[%d]=0x%08X(r8=%u,g8=%u,b8=%u) xrgb: r=%u g=%u b=%u -> 0x%04X | abgr: r=%u g=%u b=%u -> 0x%04X",
+                        i, p, r8, g8, b8, r_xrgb, g_xrgb, b_xrgb, res_xrgb, r_abgr, g_abgr, b_abgr, res_abgr);
+                    LOG(INFO, "{}", buf);
+                    found_colored = true;
+                    break;
+                }
+            }
+            if (!found_colored) {
+                snprintf(buf, sizeof(buf), "ALL pixels are gray in first %d", search_limit);
+                LOG(INFO, "{}", buf);
+            }
+        }
+    }
 
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
