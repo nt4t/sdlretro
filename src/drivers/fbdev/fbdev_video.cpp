@@ -418,25 +418,37 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
     static bool logged = false;
     if (!logged) {
         logged = true;
-        uint32_t p = src[0];
         char buf[512];
-        snprintf(buf, sizeof(buf), "RAW pixel=0x%08X", p);
-        LOG(INFO, "{}", buf);
 
-        // Try all possible extractions
-        uint16_t r_xrgb = (p >> 16) & 0x1F;
-        uint16_t g_xrgb = (p >> 8) & 0x3F;
-        uint16_t b_xrgb = p & 0x1F;
-        uint16_t res_xrgb = (r_xrgb << 11) | (g_xrgb << 5) | b_xrgb;
+        // Find a non-gray pixel (where R!=G or G!=B)
+        bool found_colored = false;
+        for (int i = 0; i < pixels && i < 1024; i++) {
+            uint32_t p = src[i];
+            uint8_t r8 = (p >> 16) & 0xFF;
+            uint8_t g8 = (p >> 8) & 0xFF;
+            uint8_t b8 = p & 0xFF;
+            if (r8 != g8 || g8 != b8) {
+                uint16_t r_xrgb = (p >> 16) & 0x1F;
+                uint16_t g_xrgb = (p >> 8) & 0x3F;
+                uint16_t b_xrgb = p & 0x1F;
+                uint16_t res_xrgb = (r_xrgb << 11) | (g_xrgb << 5) | b_xrgb;
 
-        uint16_t r_abgr = p & 0x1F;
-        uint16_t g_abgr = (p >> 8) & 0x3F;
-        uint16_t b_abgr = (p >> 16) & 0x1F;
-        uint16_t res_abgr = (r_abgr << 11) | (g_abgr << 5) | b_abgr;
+                uint16_t r_abgr = p & 0x1F;
+                uint16_t g_abgr = (p >> 8) & 0x3F;
+                uint16_t b_abgr = (p >> 16) & 0x1F;
+                uint16_t res_abgr = (r_abgr << 11) | (g_abgr << 5) | b_abgr;
 
-        snprintf(buf, sizeof(buf), "xrgb: r=%u g=%u b=%u -> 0x%04X | abgr: r=%u g=%u b=%u -> 0x%04X",
-            r_xrgb, g_xrgb, b_xrgb, res_xrgb, r_abgr, g_abgr, b_abgr, res_abgr);
-        LOG(INFO, "{}", buf);
+                snprintf(buf, sizeof(buf), "COLORED pixel[%d]=0x%08X(r8=%u,g8=%u,b8=%u) xrgb: r=%u g=%u b=%u -> 0x%04X | abgr: r=%u g=%u b=%u -> 0x%04X",
+                    i, p, r8, g8, b8, r_xrgb, g_xrgb, b_xrgb, res_xrgb, r_abgr, g_abgr, b_abgr, res_abgr);
+                LOG(INFO, "{}", buf);
+                found_colored = true;
+                break;
+            }
+        }
+        if (!found_colored) {
+            snprintf(buf, sizeof(buf), "ALL pixels are gray in first 1024");
+            LOG(INFO, "{}", buf);
+        }
     }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
