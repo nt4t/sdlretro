@@ -420,39 +420,21 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         logged = true;
         uint32_t p = src[0];
         uint16_t r = (p >> 0) & 0x1F;
-        uint16_t g = (p >> 8) & 0x3F;
+        uint16_t g = (p >> 8) & 0x1F;
         uint16_t b = (p >> 16) & 0x1F;
-        uint32_t step1 = (uint32_t)r << 11;
-        uint32_t step2 = (uint32_t)g << 5;
-        uint32_t step3 = step1 | step2;
-        uint32_t step4 = step3 | b;
-        uint16_t result = static_cast<uint16_t>(step4);
+        uint16_t result565 = static_cast<uint16_t>((r << 11) | (g << 5) | b);
+        uint16_t result1555 = static_cast<uint16_t>((r << 10) | (g << 5) | b);
         char buf[256];
-        snprintf(buf, sizeof(buf), "conv_abgr565: in=0x%08X r=%u g=%u b=%u result=0x%04X",
-            p, r, g, b, result);
-        LOG(INFO, "{}", buf);
-
-        // Test: lower 16 bits direct copy
-        uint16_t lower16 = static_cast<uint16_t>(p & 0xFFFF);
-        snprintf(buf, sizeof(buf), "lower16=0x%04X", lower16);
-        LOG(INFO, "{}", buf);
-
-        // Test: upper 16 bits
-        uint16_t upper16 = static_cast<uint16_t>((p >> 16) & 0xFFFF);
-        snprintf(buf, sizeof(buf), "upper16=0x%04X", upper16);
-        LOG(INFO, "{}", buf);
-
-        // Also try: just shift right by 16 (treat as 16-bit format)
-        uint16_t shifted = static_cast<uint16_t>(p >> 16);
-        snprintf(buf, sizeof(buf), "shifted=0x%04X", shifted);
+        snprintf(buf, sizeof(buf), "conv: in=0x%08X r=%u g=%u b=%u rgb565=0x%04X rgb1555=0x%04X",
+            p, r, g, b, result565, result1555);
         LOG(INFO, "{}", buf);
     }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
         uint16_t r = (p >> 0) & 0x1F;
-        uint16_t g = (p >> 8) & 0x3F;
+        uint16_t g = (p >> 8) & 0x1F;
         uint16_t b = (p >> 16) & 0x1F;
-        dst[i] = (r << 11) | (g << 5) | b;
+        dst[i] = (r << 10) | (g << 5) | b;
     }
 }
 
