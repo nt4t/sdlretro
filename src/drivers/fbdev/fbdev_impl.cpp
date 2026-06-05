@@ -51,7 +51,7 @@ fbdev_impl::fbdev_impl() {
         return;
     }
     
-    video = std::make_shared<fbdev_video>(fb_fd, fb_ptr, fb_size, vinfo);
+    video = std::make_shared<fbdev_video>(fb_fd, fb_ptr, fb_size, vinfo, finfo);
     input = std::make_shared<fbdev_input>();
     audio = std::make_shared<fbdev_audio>();
     input->post_init();

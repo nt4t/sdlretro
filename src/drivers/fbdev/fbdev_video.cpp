@@ -16,10 +16,10 @@ inline const font_data_t &get_pixel_font_data(uint8_t c) {
     return font_big_data[c];
 }
 
-fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo)
+fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo)
     : fb_fd(fb_fd), fb_ptr(fb_ptr), fb_size(fb_size),
       fb_width(vinfo.xres), fb_height(vinfo.yres),
-      fb_bpp(vinfo.bits_per_pixel), fb_pitch(vinfo.xres * vinfo.bits_per_pixel / 8) {
+      fb_bpp(vinfo.bits_per_pixel), fb_pitch(finfo.line_length) {
     g_cfg.get_resolution(output_width, output_height);
     if (output_width == 0) output_width = fb_width;
     if (output_height == 0) output_height = fb_height;
@@ -30,7 +30,8 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
     last_fps_time = 0;
     
     memset(fb_ptr, 0, fb_size);
-    LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}", fb_width, fb_height, fb_bpp, fb_pitch);
+    LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}, line_length={}", fb_width, fb_height, fb_bpp, fb_pitch, finfo.line_length);
+    LOG(INFO, "fb_pixel_fmt: r={}/{} g={}/{} b={}/{}", vinfo.red.offset, vinfo.red.length, vinfo.green.offset, vinfo.green.length, vinfo.blue.offset, vinfo.blue.length);
 }
 
 fbdev_video::~fbdev_video() {
@@ -124,16 +125,19 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
     }
     
     if (game_frame_buffer && game_frame_size > 0) {
+        size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
         if (fb_bpp == 32) {
             uint32_t *src = static_cast<uint32_t*>(fb_ptr);
             uint32_t *dst = static_cast<uint32_t*>(game_frame_buffer);
-            size_t copy_pixels = fb_width * fb_height;
-            memcpy(dst, src, copy_pixels * sizeof(uint32_t));
+            for (int y = 0; y < fb_height; y++) {
+                memcpy(dst + y * fb_width, src + y * fb_pitch_pixels, fb_width * sizeof(uint32_t));
+            }
         } else {
             uint16_t *src = static_cast<uint16_t*>(fb_ptr);
             uint16_t *dst = static_cast<uint16_t*>(game_frame_buffer);
-            size_t copy_pixels = fb_width * fb_height;
-            memcpy(dst, src, copy_pixels * sizeof(uint16_t));
+            for (int y = 0; y < fb_height; y++) {
+                memcpy(dst + y * fb_width, src + y * fb_pitch_pixels, fb_width * sizeof(uint16_t));
+            }
         }
     }
     
@@ -203,17 +207,20 @@ void fbdev_video::get_resolution(int &width, int &height) {
 }
 
 void fbdev_video::clear() {
+    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     if (fb_bpp == 32) {
         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-        size_t pixels = fb_width * fb_height;
-        for (size_t i = 0; i < pixels; i++) {
-            ptr[i] = 0x00000000;
+        for (int y = 0; y < fb_height; y++) {
+            for (int x = 0; x < fb_width; x++) {
+                ptr[y * fb_pitch_pixels + x] = 0x00000000;
+            }
         }
     } else {
         uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-        size_t pixels = fb_width * fb_height;
-        for (size_t i = 0; i < pixels; i++) {
-            ptr[i] = 0x0000;
+        for (int y = 0; y < fb_height; y++) {
+            for (int x = 0; x < fb_width; x++) {
+                ptr[y * fb_pitch_pixels + x] = 0x0000;
+            }
         }
     }
 }
@@ -239,10 +246,11 @@ void fbdev_video::fill_rectangle(int x, int y, int w, int h) {
         color = (r5 << 11) | (g6 << 5) | b5;
     }
     
+    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     if (fb_bpp == 32) {
         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-        ptr += y * fb_width + x;
-        size_t row_pitch = fb_width;
+        ptr += y * fb_pitch_pixels + x;
+        size_t row_pitch = fb_pitch_pixels;
         for (int row = 0; row < draw_h; row++) {
             for (int col = 0; col < draw_w; col++) {
                 ptr[row * row_pitch + col] = color;
@@ -250,8 +258,8 @@ void fbdev_video::fill_rectangle(int x, int y, int w, int h) {
         }
     } else {
         uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-        ptr += y * fb_width + x;
-        size_t row_pitch = fb_width;
+        ptr += y * fb_pitch_pixels + x;
+        size_t row_pitch = fb_pitch_pixels;
         for (int row = 0; row < draw_h; row++) {
             for (int col = 0; col < draw_w; col++) {
                 ptr[row * row_pitch + col] = static_cast<uint16_t>(color);
@@ -330,6 +338,7 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
         shadow_color = 0x7BEF;
     }
     
+   size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     for (const char *c = text; *c; c++) {
         if (*c == '\n') {
             current_x = x;
@@ -355,11 +364,11 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                     if (fontdata[fdidx] & bitflag) {
                         if (fb_bpp == 32) {
                             uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-                            ptr += (current_y + py + fd.y + 1) * fb_width + (current_x + px + fd.x + 1);
+                            ptr += (current_y + py + fd.y + 1) * fb_pitch_pixels + (current_x + px + fd.x + 1);
                             *ptr = shadow_color;
                         } else {
                             uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-                            ptr += (current_y + py + fd.y + 1) * fb_width + (current_x + px + fd.x + 1);
+                            ptr += (current_y + py + fd.y + 1) * fb_pitch_pixels + (current_x + px + fd.x + 1);
                             *ptr = static_cast<uint16_t>(shadow_color);
                         }
                     }
@@ -381,11 +390,11 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
                 if (fontdata[fdidx] & bitflag) {
                     if (fb_bpp == 32) {
                         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-                        ptr += (current_y + py + fd.y) * fb_width + (current_x + px + fd.x);
+                        ptr += (current_y + py + fd.y) * fb_pitch_pixels + (current_x + px + fd.x);
                         *ptr = text_color;
                     } else {
                         uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-                        ptr += (current_y + py + fd.y) * fb_width + (current_x + px + fd.x);
+                        ptr += (current_y + py + fd.y) * fb_pitch_pixels + (current_x + px + fd.x);
                         *ptr = static_cast<uint16_t>(text_color);
                     }
                 }
@@ -419,14 +428,17 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
     int offset_x = (fb_width - width) / 2;
     int offset_y = (fb_height - height) / 2;
     
-    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
+    
+    LOG(INFO, "render_1to1: fb_bpp={}, fb_pitch={}, fb_pitch_pixels={}, game_fmt={}", 
+        fb_bpp, fb_pitch, fb_pitch_pixels, game_pixel_format);
     
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
-        dest += offset_y * fb_width + offset_x;
-        size_t output_pitch = fb_width;
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t output_pitch = fb_pitch_pixels;
         
-        if (input_bpp == 32) {
+        if (game_pixel_format == 1) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
@@ -437,12 +449,12 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 for (int x = 0; x < width; x++) {
-                    uint16_t p16 = src_row[x];
-                    uint16_t r = (p16 >> 10) & 0x1F;
-                    uint16_t g = (p16 >> 5) & 0x1F;
-                    uint16_t b = p16 & 0x1F;
+                    uint32_t p = src_row[x];
+                    uint16_t r = (p >> 16) & 0x1F;
+                    uint16_t g = (p >> 8) & 0x3F;
+                    uint16_t b = p & 0x1F;
                     dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
                 }
                 src += pitch;
@@ -451,10 +463,10 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         }
     } else {
         uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
-        dest += offset_y * fb_width + offset_x;
-        size_t output_pitch = fb_width;
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t output_pitch = fb_pitch_pixels;
         
-        if (input_bpp == 32) {
+        if (game_pixel_format == 1) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
@@ -465,8 +477,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
-                memcpy(dest, src_row, width * sizeof(uint16_t));
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                for (int x = 0; x < width; x++) {
+                    uint32_t p = src_row[x];
+                    uint16_t r = (p >> 16) & 0x1F;
+                    uint16_t g = (p >> 8) & 0x3F;
+                    uint16_t b = p & 0x1F;
+                    dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                }
                 src += pitch;
                 dest += output_pitch;
             }
@@ -481,11 +499,12 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
     int offset_y = (fb_height - scaled_h) / 2;
     
     int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
-        dest += offset_y * fb_width + offset_x;
-        size_t dest_pitch = fb_width;
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t dest_pitch = fb_pitch_pixels;
         
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
@@ -534,8 +553,8 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         }
     } else {
         uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
-        dest += offset_y * fb_width + offset_x;
-        size_t dest_pitch = fb_width;
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t dest_pitch = fb_pitch_pixels;
         
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
