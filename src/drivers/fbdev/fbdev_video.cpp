@@ -106,7 +106,9 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
         return;
     }
     
-    LOG(INFO, "render: w={} h={} pitch={} bpp={}", width, height, pitch, (pitch / width) * 8);
+    if (render_log_enabled) {
+        LOG(INFO, "render: w={} h={} pitch={} bpp={}", width, height, pitch, (pitch / width) * 8);
+    }
     
    drawn = true;
     frame_count++;
