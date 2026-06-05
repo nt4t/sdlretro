@@ -422,7 +422,15 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         uint16_t r = p & 0x1F;
         uint16_t g = (p >> 8) & 0x3F;
         uint16_t b = (p >> 16) & 0x1F;
-        dst[i] = (r << 11) | (g << 5) | b;
+        uint16_t out = (r << 11) | (g << 5) | b;
+        if (out == 0xBDBEBD || p == 0xBDBEBD) {
+            uint8_t r8 = (p >> 16) & 0xFF;
+            uint8_t g8 = (p >> 8) & 0xFF;
+            uint8_t b8 = p & 0xFF;
+            LOG(INFO, "COLOR TRACE: input=0x%08X r8=%02X g8=%02X b8=%02X | ABGR565: r=%u g=%u b=%u -> output=0x%04X | xrgb8888 check: 0x%06X",
+                p, r8, g8, b8, r, g, b, out, p & 0xFFFFFF);
+        }
+        dst[i] = out;
     }
 }
 
@@ -446,7 +454,13 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
-                memcpy(dest, src_row, width * sizeof(uint32_t));
+                for (int x = 0; x < width; x++) {
+                    uint32_t p = src_row[x];
+                    if (p == 0xBDBEBD) {
+                        LOG(INFO, "32->32 COPY: input=0x%08X output=0x%08X", p, p);
+                    }
+                    dest[x] = p;
+                }
                 src += pitch;
                 dest += output_pitch;
             }
@@ -456,6 +470,13 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t p = src_row[x];
+                    if (p == 0xBDBEBD || (p & 0xFFFF) == 0xBDBE) {
+                        uint16_t r = (p >> 10) & 0x1F;
+                        uint16_t g = (p >> 5) & 0x1F;
+                        uint16_t b = p & 0x1F;
+                        uint32_t out = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                        LOG(INFO, "16->32 RGB1555: input=0x%04X r=%u g=%u b=%u -> output=0x%08X", p, r, g, b, out);
+                    }
                     uint16_t r = (p >> 10) & 0x1F;
                     uint16_t g = (p >> 5) & 0x1F;
                     uint16_t b = p & 0x1F;
@@ -481,7 +502,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
-                memcpy(dest, src, width * sizeof(uint16_t));
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
+                for (int x = 0; x < width; x++) {
+                    uint16_t p = src_row[x];
+                    if (p == 0xBDBEBD || (p & 0xFFFF) == 0xBDBE) {
+                        LOG(INFO, "16->16 COPY: input=0x%04X output=0x%04X", p, p);
+                    }
+                    dest[x] = p;
+                }
                 src += pitch;
                 dest += output_pitch;
             }
@@ -512,6 +540,9 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
+                    if (p == 0xBDBEBD) {
+                        LOG(INFO, "SCALE 32->32: input=0x%08X -> h_line=0x%08X", p, p);
+                    }
                     for (int sx = 0; sx < scale; sx++) {
                         this->h_line_32[x * scale + sx] = p;
                     }
@@ -528,6 +559,13 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t p16 = src_row[x];
+                    if (p16 == 0xBDBEBD || (p16 & 0xFFFF) == 0xBDBE) {
+                        uint16_t r = (p16 >> 10) & 0x1F;
+                        uint16_t g = (p16 >> 5) & 0x1F;
+                        uint16_t b = p16 & 0x1F;
+                        uint32_t out = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                        LOG(INFO, "SCALE 16->32 RGB1555: input=0x%04X r=%u g=%u b=%u -> output=0x%08X", p16, r, g, b, out);
+                    }
                     uint16_t r = (p16 >> 10) & 0x1F;
                     uint16_t g = (p16 >> 5) & 0x1F;
                     uint16_t b = p16 & 0x1F;
@@ -554,6 +592,13 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
+                    if (p == 0xBDBEBD) {
+                        uint16_t r = (p >> 16) & 0x1F;
+                        uint16_t g = (p >> 8) & 0x3F;
+                        uint16_t b = p & 0x1F;
+                        uint16_t pix = (r << 11) | (g << 5) | b;
+                        LOG(INFO, "SCALE 32->16 ABGR: input=0x%08X r=%u g=%u b=%u -> output=0x%04X", p, r, g, b, pix);
+                    }
                     uint16_t r = (p >> 16) & 0x1F;
                     uint16_t g = (p >> 8) & 0x3F;
                     uint16_t b = p & 0x1F;
@@ -574,6 +619,9 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t pix = src_row[x];
+                    if (pix == 0xBDBEBD || (pix & 0xFFFF) == 0xBDBE) {
+                        LOG(INFO, "SCALE 16->16: input=0x%04X -> output=0x%04X", pix, pix);
+                    }
                     for (int sx = 0; sx < scale; sx++) {
                         this->h_line_16[x * scale + sx] = pix;
                     }
