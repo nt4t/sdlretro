@@ -422,7 +422,8 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
 
         // Find a non-gray pixel (where R!=G or G!=B)
         bool found_colored = false;
-        for (int i = 0; i < pixels && i < 1024; i++) {
+        int search_limit = pixels < 65536 ? pixels : 65536;
+        for (int i = 0; i < search_limit; i++) {
             uint32_t p = src[i];
             uint8_t r8 = (p >> 16) & 0xFF;
             uint8_t g8 = (p >> 8) & 0xFF;
@@ -446,7 +447,7 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
             }
         }
         if (!found_colored) {
-            snprintf(buf, sizeof(buf), "ALL pixels are gray in first 1024");
+            snprintf(buf, sizeof(buf), "ALL pixels are gray in first %d", search_limit);
             LOG(INFO, "{}", buf);
         }
     }
