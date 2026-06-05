@@ -441,6 +441,12 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         input_bpp = (game_pixel_format == 1) ? 32 : 16;
     }
     
+    static bool fb66_86_logged = false;
+    int target_fb_x = 66;
+    int target_fb_y = 86;
+    int target_game_x = target_fb_x - offset_x;
+    int target_game_y = target_fb_y - offset_y;
+    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_pitch_pixels + offset_x;
@@ -455,6 +461,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                     if (game_pixel_format == 1 && p == 0xBDBEBD) {
                         LOG(INFO, "32->32 COPY: input=0x%08X output=0x%08X", p, p);
                     }
+                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
+                        fb66_86_logged = true;
+                        uint8_t r = p & 0xFF;
+                        uint8_t g = (p >> 8) & 0xFF;
+                        uint8_t b = (p >> 16) & 0xFF;
+                        uint8_t a = (p >> 24) & 0xFF;
+                        LOG(INFO, "CORE OUTPUT at game({},{}) fb({},{}): input=0x{:08X} rgba=({},{},{},{})", target_game_x, target_game_y, target_fb_x, target_fb_y, p, r, g, b, a);
+                    }
                     dest[x] = p;
                 }
                 src += pitch;
@@ -466,6 +480,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t p = src_row[x];
+                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
+                        fb66_86_logged = true;
+                        uint16_t r = (p >> 10) & 0x1F;
+                        uint16_t g = (p >> 5) & 0x1F;
+                        uint16_t b = p & 0x1F;
+                        uint32_t out = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                        LOG(INFO, "CORE OUTPUT at game({},{}) fb({},{}): input=0x{:04X} rgb1555=({},{},{}) -> output=0x{:08X}", target_game_x, target_game_y, target_fb_x, target_fb_y, p, r, g, b, out);
+                    }
                     uint16_t r = (p >> 10) & 0x1F;
                     uint16_t g = (p >> 5) & 0x1F;
                     uint16_t b = p & 0x1F;
@@ -484,6 +506,20 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                for (int x = 0; x < width; x++) {
+                    uint32_t p = src_row[x];
+                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
+                        fb66_86_logged = true;
+                        uint16_t r = p & 0x1F;
+                        uint16_t g = (p >> 8) & 0x3F;
+                        uint16_t b = (p >> 16) & 0x1F;
+                        uint16_t out = (r << 11) | (g << 5) | b;
+                        uint8_t r8 = (p >> 16) & 0xFF;
+                        uint8_t g8 = (p >> 8) & 0xFF;
+                        uint8_t b8 = p & 0xFF;
+                        LOG(INFO, "CORE OUTPUT at game({},{}) fb({},{}): input=0x{:08X} r8={:3} g8={:3} b8={:3} | ABGR565: r={} g={} b={} -> output=0x{:04X}", target_game_x, target_game_y, target_fb_x, target_fb_y, p, r8, g8, b8, r, g, b, out);
+                    }
+                }
                 convert_xrgb8888_to_rgb565(src_row, dest, width);
                 src += pitch;
                 dest += output_pitch;
@@ -493,6 +529,11 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             for (int h = 0; h < height; h++) {
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
+                    uint16_t p = src_row[x];
+                    if (!fb66_86_logged && h == target_game_y && x == target_game_x) {
+                        fb66_86_logged = true;
+                        LOG(INFO, "CORE OUTPUT at game({},{}) fb({},{}): input=0x{:04X} -> output=0x{:04X}", target_game_x, target_game_y, target_fb_x, target_fb_y, p, p);
+                    }
                     dest[x] = src_row[x];
                 }
                 src += pitch;
