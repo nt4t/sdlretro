@@ -441,6 +441,11 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         uint16_t upper16 = static_cast<uint16_t>((p >> 16) & 0xFFFF);
         snprintf(buf, sizeof(buf), "upper16=0x%04X", upper16);
         LOG(INFO, "{}", buf);
+
+        // Also try: just shift right by 16 (treat as 16-bit format)
+        uint16_t shifted = static_cast<uint16_t>(p >> 16);
+        snprintf(buf, sizeof(buf), "shifted=0x%04X", shifted);
+        LOG(INFO, "{}", buf);
     }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
