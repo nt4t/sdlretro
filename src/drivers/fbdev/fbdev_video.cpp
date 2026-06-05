@@ -415,16 +415,16 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
 void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels) {
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
-        uint16_t r = p & 0x1F;
-        uint16_t g = (p >> 8) & 0x3F;
-        uint16_t b = (p >> 16) & 0x1F;
-        uint16_t out = (r << 11) | (g << 5) | b;
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        uint16_t r5 = r8 >> 3;
+        uint16_t g6 = g8 >> 2;
+        uint16_t b5 = b8 >> 3;
+        uint16_t out = (r5 << 11) | (g6 << 5) | b5;
         if (game_pixel_format == 1 && p == 0xBDBEBD) {
-            uint8_t r8 = (p >> 16) & 0xFF;
-            uint8_t g8 = (p >> 8) & 0xFF;
-            uint8_t b8 = p & 0xFF;
-            LOG(INFO, "COLOR TRACE: input=0x%08X r8=%02X g8=%02X b8=%02X | ABGR565: r=%u g=%u b=%u -> output=0x%04X | xrgb8888 check: 0x%06X",
-                p, r8, g8, b8, r, g, b, out, p & 0xFFFFFF);
+            LOG(INFO, "COLOR TRACE: input=0x%08X r8=%02X g8=%02X b8=%02X | RGB565: r5=%u g6=%u b5=%u -> output=0x%04X",
+                p, r8, g8, b8, r5, g6, b5, out);
         }
         dst[i] = out;
     }
@@ -548,14 +548,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
                             core_pixel_game_xs[i] = diag_game_x;
                             core_pixel_game_ys[i] = diag_game_y;
                             core_pixel_is_32s[i] = true;
-                            uint16_t r = p & 0x1F;
-                            uint16_t g = (p >> 8) & 0x3F;
-                            uint16_t b = (p >> 16) & 0x1F;
-                            uint16_t out = (r << 11) | (g << 5) | b;
                             uint8_t r8 = (p >> 16) & 0xFF;
                             uint8_t g8 = (p >> 8) & 0xFF;
                             uint8_t b8 = p & 0xFF;
-                            LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) input=0x{:08X} r8={:3} g8={:3} b8={:3} | ABGR565: r={} g={} b={} -> out=0x{:04X}", i, diag_game_x, diag_game_y, diag_fb_x, diag_fb_y, p, r8, g8, b8, r, g, b, out);
+                            uint16_t r5 = r8 >> 3;
+                            uint16_t g6 = g8 >> 2;
+                            uint16_t b5 = b8 >> 3;
+                            uint16_t out = (r5 << 11) | (g6 << 5) | b5;
+                            LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) input=0x{:08X} r8={:3} g8={:3} b8={:3} | RGB565: r5={} g6={} b5={} -> out=0x{:04X}", i, diag_game_x, diag_game_y, diag_fb_x, diag_fb_y, p, r8, g8, b8, r5, g6, b5, out);
                             break;
                         }
                     }
@@ -665,16 +665,22 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
                     if (game_pixel_format == 1 && p == 0xBDBEBD) {
-                        uint16_t r = (p >> 16) & 0x1F;
-                        uint16_t g = (p >> 8) & 0x3F;
-                        uint16_t b = p & 0x1F;
-                        uint16_t pix = (r << 11) | (g << 5) | b;
-                        LOG(INFO, "SCALE 32->16 ABGR: input=0x%08X r=%u g=%u b=%u -> output=0x%04X", p, r, g, b, pix);
+                        uint8_t r8 = (p >> 16) & 0xFF;
+                        uint8_t g8 = (p >> 8) & 0xFF;
+                        uint8_t b8 = p & 0xFF;
+                        uint16_t r5 = r8 >> 3;
+                        uint16_t g6 = g8 >> 2;
+                        uint16_t b5 = b8 >> 3;
+                        uint16_t pix = (r5 << 11) | (g6 << 5) | b5;
+                        LOG(INFO, "SCALE 32->16: input=0x%08X r8=%u g8=%u b8=%u -> RGB565 r5=%u g6=%u b5=%u -> output=0x%04X", p, r8, g8, b8, r5, g6, b5, pix);
                     }
-                    uint16_t r = (p >> 16) & 0x1F;
-                    uint16_t g = (p >> 8) & 0x3F;
-                    uint16_t b = p & 0x1F;
-                    uint16_t pix = (r << 11) | (g << 5) | b;
+                    uint8_t r8 = (p >> 16) & 0xFF;
+                    uint8_t g8 = (p >> 8) & 0xFF;
+                    uint8_t b8 = p & 0xFF;
+                    uint16_t r5 = r8 >> 3;
+                    uint16_t g6 = g8 >> 2;
+                    uint16_t b5 = b8 >> 3;
+                    uint16_t pix = (r5 << 11) | (g6 << 5) | b5;
                     for (int sx = 0; sx < scale; sx++) {
                         this->h_line_16[x * scale + sx] = pix;
                     }
