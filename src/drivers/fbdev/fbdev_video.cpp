@@ -165,8 +165,8 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
                     tw += fd.sw;
                 }
                 
-                set_draw_color(128, 128, 128, 255);
-                fill_rectangle(6, 6, tw + 8, 11);
+               set_draw_color(128, 128, 128, 255);
+                fill_rectangle(6, 0, tw + 8, 11);
                 set_draw_color(255, 255, 255, 255);
                 draw_text(10, 10, fps_text, 0, false);
             }
