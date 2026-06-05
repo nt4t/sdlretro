@@ -417,12 +417,15 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
     int offset_x = (fb_width - width) / 2;
     int offset_y = (fb_height - height) / 2;
     
+    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    bool use_16bit = (input_bpp == 16);
+    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (game_pixel_format == 1 && !use_16bit) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
@@ -450,7 +453,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         dest += offset_y * fb_width + offset_x;
         size_t output_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (game_pixel_format == 1 && !use_16bit) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
@@ -476,12 +479,15 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
     int offset_x = (fb_width - scaled_w) / 2;
     int offset_y = (fb_height - scaled_h) / 2;
     
+    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    bool use_16bit = (input_bpp == 16);
+    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_width + offset_x;
         size_t dest_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (game_pixel_format == 1 && !use_16bit) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
@@ -531,7 +537,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         dest += offset_y * fb_width + offset_x;
         size_t dest_pitch = fb_width;
         
-        if (game_pixel_format == 1) {
+        if (game_pixel_format == 1 && !use_16bit) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             
             for (int y = 0; y < height; y++) {
