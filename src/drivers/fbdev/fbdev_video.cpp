@@ -431,6 +431,16 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         snprintf(buf, sizeof(buf), "conv_abgr565: in=0x%08X r=%u g=%u b=%u result=0x%04X",
             p, r, g, b, result);
         LOG(INFO, "{}", buf);
+
+        // Test: lower 16 bits direct copy
+        uint16_t lower16 = static_cast<uint16_t>(p & 0xFFFF);
+        snprintf(buf, sizeof(buf), "lower16=0x%04X", lower16);
+        LOG(INFO, "{}", buf);
+
+        // Test: upper 16 bits
+        uint16_t upper16 = static_cast<uint16_t>((p >> 16) & 0xFFFF);
+        snprintf(buf, sizeof(buf), "upper16=0x%04X", upper16);
+        LOG(INFO, "{}", buf);
     }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
