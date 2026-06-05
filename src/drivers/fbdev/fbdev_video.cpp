@@ -419,13 +419,23 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
     if (!logged) {
         logged = true;
         uint32_t p = src[0];
-        uint16_t r = (p >> 16) & 0x1F;
-        uint16_t g = (p >> 8) & 0x3F;
-        uint16_t b = p & 0x1F;
-        uint16_t result = static_cast<uint16_t>((r << 11) | (g << 5) | b);
-        char buf[256];
-        snprintf(buf, sizeof(buf), "conv: in=0x%08X r=%u g=%u b=%u result=0x%04X",
-            p, r, g, b, result);
+        char buf[512];
+        snprintf(buf, sizeof(buf), "RAW pixel=0x%08X", p);
+        LOG(INFO, "{}", buf);
+
+        // Try all possible extractions
+        uint16_t r_xrgb = (p >> 16) & 0x1F;
+        uint16_t g_xrgb = (p >> 8) & 0x3F;
+        uint16_t b_xrgb = p & 0x1F;
+        uint16_t res_xrgb = (r_xrgb << 11) | (g_xrgb << 5) | b_xrgb;
+
+        uint16_t r_abgr = p & 0x1F;
+        uint16_t g_abgr = (p >> 8) & 0x3F;
+        uint16_t b_abgr = (p >> 16) & 0x1F;
+        uint16_t res_abgr = (r_abgr << 11) | (g_abgr << 5) | b_abgr;
+
+        snprintf(buf, sizeof(buf), "xrgb: r=%u g=%u b=%u -> 0x%04X | abgr: r=%u g=%u b=%u -> 0x%04X",
+            r_xrgb, g_xrgb, b_xrgb, res_xrgb, r_abgr, g_abgr, b_abgr, res_abgr);
         LOG(INFO, "{}", buf);
     }
     for (int i = 0; i < pixels; i++) {
