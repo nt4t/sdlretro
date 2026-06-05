@@ -435,9 +435,9 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
             uint16x4_t g8 = vshrn_n_u32(v, 8);
             uint16x4_t b8 = vmovn_u32(v);
             
-            uint16x4_t r5 = vshrn_n_u32(vreinterpret_u32_u16(r8), 3);
-            uint16x4_t g6 = vshrn_n_u32(vreinterpret_u32_u16(g8), 2);
-            uint16x4_t b5 = vshrn_n_u32(vreinterpret_u32_u16(b8), 3);
+            uint16x4_t r5 = vshrq_n_u16(r8, 3);
+            uint16x4_t g6 = vshrq_n_u16(g8, 2);
+            uint16x4_t b5 = vshrq_n_u16(b8, 3);
             
             uint16x4_t r5s = vshl_n_u16(r5, 11);
             uint16x4_t g6s = vshl_n_u16(g6, 5);
