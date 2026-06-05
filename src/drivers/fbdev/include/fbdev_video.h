@@ -76,6 +76,7 @@ private:
     bool fps_enabled = false;
     bool render_log_enabled = false;
     bool pixel_format_logged = false;
+    bool simd_enabled = false;
     int frame_count = 0;
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;

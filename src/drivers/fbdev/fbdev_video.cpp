@@ -32,6 +32,18 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
     memset(fb_ptr, 0, fb_size);
     LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}, line_length={}", fb_width, fb_height, fb_bpp, fb_pitch, finfo.line_length);
     LOG(INFO, "fb_pixel_fmt: r={}/{} g={}/{} b={}/{}", vinfo.red.offset, vinfo.red.length, vinfo.green.offset, vinfo.green.length, vinfo.blue.offset, vinfo.blue.length);
+#if defined(__ARM_NEON) && defined(__arm__)
+    simd_enabled = true;
+    LOG(INFO, "SIMD: ARM NEON (32-bit, 4 pixels/cycle)");
+#elif defined(__ARM_NEON) && defined(__aarch64__)
+    simd_enabled = true;
+    LOG(INFO, "SIMD: ARM NEON (64-bit, 8 pixels/cycle)");
+#elif defined(__SSE2__)
+    simd_enabled = true;
+    LOG(INFO, "SIMD: SSE2 (8 pixels/cycle)");
+#else
+    LOG(INFO, "SIMD: none (scalar fallback)");
+#endif
 }
 
 fbdev_video::~fbdev_video() {
