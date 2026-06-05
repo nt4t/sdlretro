@@ -106,10 +106,6 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
         return;
     }
     
-    if (render_log_enabled) {
-        LOG(INFO, "render: w={} h={} pitch={} bpp={}", width, height, pitch, (pitch / width) * 8);
-    }
-    
    drawn = true;
     frame_count++;
     
@@ -601,9 +597,6 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
                 for (int x = 0; x < width; x++) {
                     uint16_t pix = src_row[x];
-                    if (pix == 0xBDBEBD || (pix & 0xFFFF) == 0xBDBE) {
-                        LOG(INFO, "SCALE 16->16: input=0x%04X -> output=0x%04X", pix, pix);
-                    }
                     for (int sx = 0; sx < scale; sx++) {
                         this->h_line_16[x * scale + sx] = pix;
                     }
@@ -615,6 +608,33 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 src += pitch;
             }
         }
+    }
+}
+
+void fbdev_video::log_fb_pixel(int x, int y) {
+    if (y < 0 || y >= fb_height || x < 0 || x >= fb_width) {
+        LOG(INFO, "FB PIXEL: out of range ({},{}) fb={}x{}", x, y, fb_width, fb_height);
+        return;
+    }
+    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
+    if (fb_bpp == 32) {
+        uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
+        uint32_t p = ptr[y * fb_pitch_pixels + x];
+        uint8_t r = p & 0xFF;
+        uint8_t g = (p >> 8) & 0xFF;
+        uint8_t b = (p >> 16) & 0xFF;
+        uint8_t a = (p >> 24) & 0xFF;
+        LOG(INFO, "FB PIXEL pos=({},{}) value=0x{:08X} rgba=({},{},{},{})", x, y, p, r, g, b, a);
+    } else {
+        uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
+        uint16_t p = ptr[y * fb_pitch_pixels + x];
+        uint8_t r5 = (p >> 11) & 0x1F;
+        uint8_t g6 = (p >> 5) & 0x3F;
+        uint8_t b5 = p & 0x1F;
+        uint8_t r8 = (r5 * 255) / 31;
+        uint8_t g8 = (g6 * 255) / 63;
+        uint8_t b8 = (b5 * 255) / 31;
+        LOG(INFO, "FB PIXEL pos=({},{}) value=0x{:04X} rgb565=({},{},{}) -> rgb8=({},{},{})", x, y, p, r5, g6, b5, r8, g8, b8);
     }
 }
 
