@@ -490,6 +490,14 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
 
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
+            static bool conv_logged = false;
+            if (!conv_logged) {
+                conv_logged = true;
+                const uint32_t *first_pixel = reinterpret_cast<const uint32_t*>(src);
+                char buf[256];
+                snprintf(buf, sizeof(buf), "src first pixel=0x%08X dst first=0x%04X", *first_pixel, dest[0]);
+                LOG(INFO, "{}", buf);
+            }
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 convert_xrgb8888_to_rgb565(src_row, dest, width);
