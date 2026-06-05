@@ -428,7 +428,7 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
     int bulk = pixels & ~3;
     if (bulk > 0) {
         while (i < bulk) {
-            uint32x4_t v = vld1_u32(src);
+            uint32x4_t v = vget_low_u32(vld1q_u32(src));
             src += 4;
             
             uint16x4_t r8 = vshrn_n_u32(v, 16);
