@@ -411,7 +411,40 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
 #endif
 
 void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels) {
-#if defined(__ARM_NEON) && (defined(__arm__) || defined(__aarch64__))
+#if defined(__ARM_NEON) && defined(__arm__)
+    int i = 0;
+    int bulk = pixels & ~3;
+    if (bulk > 0) {
+        while (i < bulk) {
+            uint32x4_t v = vld1_u32(src);
+            src += 4;
+            
+            uint16x4_t r8 = vshrn_n_u32(v, 16);
+            uint16x4_t g8 = vshrn_n_u32(v, 8);
+            uint16x4_t b8 = vmovn_u32(v);
+            
+            uint16x4_t r5 = vshrn_n_u32(vreinterpret_u32_u16(r8), 3);
+            uint16x4_t g6 = vshrn_n_u32(vreinterpret_u32_u16(g8), 2);
+            uint16x4_t b5 = vshrn_n_u32(vreinterpret_u32_u16(b8), 3);
+            
+            uint16x4_t r5s = vshl_n_u16(r5, 11);
+            uint16x4_t g6s = vshl_n_u16(g6, 5);
+            
+            uint16x4_t result = vorr_u16(vorr_u16(r5s, g6s), b5);
+            
+            vst1_u16(dst, result);
+            dst += 4;
+            i += 4;
+        }
+    }
+    for (; i < pixels; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        dst[i] = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+    }
+#elif defined(__ARM_NEON) && defined(__aarch64__)
     int i = 0;
     int bulk = pixels & ~7;
     if (bulk > 0) {
