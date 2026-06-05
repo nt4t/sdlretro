@@ -415,6 +415,18 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
 }
 
 void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels) {
+    static bool logged = false;
+    if (!logged) {
+        logged = true;
+        uint32_t p = src[0];
+        uint16_t r = (p >> 16) & 0x1F;
+        uint16_t g = (p >> 8) & 0x3F;
+        uint16_t b = p & 0x1F;
+        uint16_t result = (r << 11) | (g << 5) | b;
+        char buf[128];
+        snprintf(buf, sizeof(buf), "convert_xrgb8888_to_rgb565: input=0x%08X r=%u g=%u b=%u output=0x%04X", p, r, g, b, result);
+        LOG(INFO, "{}", buf);
+    }
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
         uint16_t r = (p >> 16) & 0x1F;
