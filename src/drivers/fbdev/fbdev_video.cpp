@@ -441,13 +441,6 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         input_bpp = (game_pixel_format == 1) ? 32 : 16;
     }
     
-    int start_fb_x = 34;
-    int start_fb_y = 54;
-    bool diagonal_captured = false;
-    for (int i = 0; i < 50; i++) {
-        core_pixel_captured[i] = false;
-    }
-    
     if (fb_bpp == 32) {
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_pitch_pixels + offset_x;
@@ -458,142 +451,49 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 for (int x = 0; x < width; x++) {
-                    uint32_t p = src_row[x];
-                    if (game_pixel_format == 1 && p == 0xBDBEBD) {
-                        LOG(INFO, "32->32 COPY: input=0x%08X output=0x%08X", p, p);
-                    }
-                    for (int i = 0; i < 50; i++) {
-                        int diag_fb_x = start_fb_x + i;
-                        int diag_fb_y = start_fb_y + i;
-                        int diag_game_x = diag_fb_x - offset_x;
-                        int diag_game_y = diag_fb_y - offset_y;
-                        if (!core_pixel_captured[i] && h == diag_game_y && x == diag_game_x) {
-                            core_pixel_captured[i] = true;
-                            core_pixel_values[i] = p;
-                            core_pixel_fb_xs[i] = diag_fb_x;
-                            core_pixel_fb_ys[i] = diag_fb_y;
-                            core_pixel_game_xs[i] = diag_game_x;
-                            core_pixel_game_ys[i] = diag_game_y;
-                            core_pixel_is_32s[i] = true;
-                            uint8_t r = p & 0xFF;
-                            uint8_t g = (p >> 8) & 0xFF;
-                            uint8_t b = (p >> 16) & 0xFF;
-                            uint8_t a = (p >> 24) & 0xFF;
-                            LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) input=0x{:08X} rgba=({},{},{},{})", i, diag_game_x, diag_game_y, diag_fb_x, diag_fb_y, p, r, g, b, a);
-                            break;
-                        }
-                    }
-                    dest[x] = p;
-                }
-                src += pitch;
-                dest += output_pitch;
-            }
-        } else {
-            const uint8_t *src = static_cast<const uint8_t*>(data);
-            for (int h = 0; h < height; h++) {
-                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
-                for (int x = 0; x < width; x++) {
-                    uint16_t p = src_row[x];
-                    for (int i = 0; i < 50; i++) {
-                        int diag_fb_x = start_fb_x + i;
-                        int diag_fb_y = start_fb_y + i;
-                        int diag_game_x = diag_fb_x - offset_x;
-                        int diag_game_y = diag_fb_y - offset_y;
-                        if (!core_pixel_captured[i] && h == diag_game_y && x == diag_game_x) {
-                            core_pixel_captured[i] = true;
-                            core_pixel_values[i] = p;
-                            core_pixel_fb_xs[i] = diag_fb_x;
-                            core_pixel_fb_ys[i] = diag_fb_y;
-                            core_pixel_game_xs[i] = diag_game_x;
-                            core_pixel_game_ys[i] = diag_game_y;
-                            core_pixel_is_32s[i] = false;
-                            uint16_t r = (p >> 10) & 0x1F;
-                            uint16_t g = (p >> 5) & 0x1F;
-                            uint16_t b = p & 0x1F;
-                            uint32_t out = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
-                            LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) input=0x{:04X} rgb1555=({},{},{}) -> output=0x{:08X}", i, diag_game_x, diag_game_y, diag_fb_x, diag_fb_y, p, r, g, b, out);
-                            break;
-                        }
-                    }
-                    uint16_t r = (p >> 10) & 0x1F;
-                    uint16_t g = (p >> 5) & 0x1F;
-                    uint16_t b = p & 0x1F;
-                    dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
-                }
-                src += pitch;
-                dest += output_pitch;
-            }
-        }
-    } else {
-        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
-        dest += offset_y * fb_pitch_pixels + offset_x;
-        size_t output_pitch = fb_pitch_pixels;
-        
-        if (input_bpp == 32) {
-            const uint8_t *src = static_cast<const uint8_t*>(data);
-            for (int h = 0; h < height; h++) {
-                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
-                for (int x = 0; x < width; x++) {
-                    uint32_t p = src_row[x];
-                    for (int i = 0; i < 50; i++) {
-                        int diag_fb_x = start_fb_x + i;
-                        int diag_fb_y = start_fb_y + i;
-                        int diag_game_x = diag_fb_x - offset_x;
-                        int diag_game_y = diag_fb_y - offset_y;
-                        if (!core_pixel_captured[i] && h == diag_game_y && x == diag_game_x) {
-                            core_pixel_captured[i] = true;
-                            core_pixel_values[i] = p;
-                            core_pixel_fb_xs[i] = diag_fb_x;
-                            core_pixel_fb_ys[i] = diag_fb_y;
-                            core_pixel_game_xs[i] = diag_game_x;
-                            core_pixel_game_ys[i] = diag_game_y;
-                            core_pixel_is_32s[i] = true;
-                            uint8_t r8 = (p >> 16) & 0xFF;
-                            uint8_t g8 = (p >> 8) & 0xFF;
-                            uint8_t b8 = p & 0xFF;
-                            uint16_t r5 = r8 >> 3;
-                            uint16_t g6 = g8 >> 2;
-                            uint16_t b5 = b8 >> 3;
-                            uint16_t out = (r5 << 11) | (g6 << 5) | b5;
-                            LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) input=0x{:08X} r8={:3} g8={:3} b8={:3} | RGB565: r5={} g6={} b5={} -> out=0x{:04X}", i, diag_game_x, diag_game_y, diag_fb_x, diag_fb_y, p, r8, g8, b8, r5, g6, b5, out);
-                            break;
-                        }
-                    }
-                }
-                convert_xrgb8888_to_rgb565(src_row, dest, width);
-                src += pitch;
-                dest += output_pitch;
-            }
-        } else {
-            const uint8_t *src = static_cast<const uint8_t*>(data);
-            for (int h = 0; h < height; h++) {
-                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
-                for (int x = 0; x < width; x++) {
-                    uint16_t p = src_row[x];
-                    for (int i = 0; i < 50; i++) {
-                        int diag_fb_x = start_fb_x + i;
-                        int diag_fb_y = start_fb_y + i;
-                        int diag_game_x = diag_fb_x - offset_x;
-                        int diag_game_y = diag_fb_y - offset_y;
-                        if (!core_pixel_captured[i] && h == diag_game_y && x == diag_game_x) {
-                            core_pixel_captured[i] = true;
-                            core_pixel_values[i] = p;
-                            core_pixel_fb_xs[i] = diag_fb_x;
-                            core_pixel_fb_ys[i] = diag_fb_y;
-                            core_pixel_game_xs[i] = diag_game_x;
-                            core_pixel_game_ys[i] = diag_game_y;
-                            core_pixel_is_32s[i] = false;
-                            LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) input=0x{:04X} -> output=0x{:04X}", i, diag_game_x, diag_game_y, diag_fb_x, diag_fb_y, p, p);
-                            break;
-                        }
-                    }
                     dest[x] = src_row[x];
                 }
                 src += pitch;
                 dest += output_pitch;
             }
-        }
-    }
+      } else {
+             const uint8_t *src = static_cast<const uint8_t*>(data);
+             for (int h = 0; h < height; h++) {
+                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
+                 for (int x = 0; x < width; x++) {
+                     uint16_t p = src_row[x];
+                     uint16_t r = (p >> 10) & 0x1F;
+                     uint16_t g = (p >> 5) & 0x1F;
+                     uint16_t b = p & 0x1F;
+                     dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                 }
+                 src += pitch;
+                 dest += output_pitch;
+             }
+         }
+  } else {
+         uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
+         dest += offset_y * fb_pitch_pixels + offset_x;
+         size_t output_pitch = fb_pitch_pixels;
+         
+         if (input_bpp == 32) {
+             const uint8_t *src = static_cast<const uint8_t*>(data);
+             for (int h = 0; h < height; h++) {
+                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                 convert_xrgb8888_to_rgb565(src_row, dest, width);
+                 src += pitch;
+                 dest += output_pitch;
+             }
+         } else {
+             const uint8_t *src = static_cast<const uint8_t*>(data);
+             for (int h = 0; h < height; h++) {
+                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
+                 memcpy(dest, src_row, width * sizeof(uint16_t));
+                 src += pitch;
+                 dest += output_pitch;
+             }
+         }
+     }
 }
 
 void fbdev_video::render_scaled(const void *data, int width, int height, size_t pitch) {
@@ -613,26 +513,22 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         dest += offset_y * fb_pitch_pixels + offset_x;
         size_t dest_pitch = fb_pitch_pixels;
         
-        if (input_bpp == 32) {
-            const uint8_t *src = static_cast<const uint8_t*>(data);
-            for (int y = 0; y < height; y++) {
-                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
-                for (int x = 0; x < width; x++) {
-                    uint32_t p = src_row[x];
-                    if (game_pixel_format == 1 && p == 0xBDBEBD) {
-                        LOG(INFO, "SCALE 32->32: input=0x%08X -> h_line=0x%08X", p, p);
-                    }
-                    for (int sx = 0; sx < scale; sx++) {
-                        this->h_line_32[x * scale + sx] = p;
-                    }
-                }
-                for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest, this->h_line_32, scaled_w * sizeof(uint32_t));
-                    dest += dest_pitch;
-                }
-                src += pitch;
-            }
-        } else {
+ if (input_bpp == 32) {
+             const uint8_t *src = static_cast<const uint8_t*>(data);
+             for (int y = 0; y < height; y++) {
+                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                 for (int x = 0; x < width; x++) {
+                     for (int sx = 0; sx < scale; sx++) {
+                         this->h_line_32[x * scale + sx] = src_row[x];
+                     }
+                 }
+                 for (int sy = 0; sy < scale; sy++) {
+                     memcpy(dest, this->h_line_32, scaled_w * sizeof(uint32_t));
+                     dest += dest_pitch;
+                 }
+                 src += pitch;
+             }
+         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int y = 0; y < height; y++) {
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
@@ -658,40 +554,23 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         dest += offset_y * fb_pitch_pixels + offset_x;
         size_t dest_pitch = fb_pitch_pixels;
         
-        if (input_bpp == 32) {
-            const uint8_t *src = static_cast<const uint8_t*>(data);
-            for (int y = 0; y < height; y++) {
-                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
-                for (int x = 0; x < width; x++) {
-                    uint32_t p = src_row[x];
-                    if (game_pixel_format == 1 && p == 0xBDBEBD) {
-                        uint8_t r8 = (p >> 16) & 0xFF;
-                        uint8_t g8 = (p >> 8) & 0xFF;
-                        uint8_t b8 = p & 0xFF;
-                        uint16_t r5 = r8 >> 3;
-                        uint16_t g6 = g8 >> 2;
-                        uint16_t b5 = b8 >> 3;
-                        uint16_t pix = (r5 << 11) | (g6 << 5) | b5;
-                        LOG(INFO, "SCALE 32->16: input=0x%08X r8=%u g8=%u b8=%u -> RGB565 r5=%u g6=%u b5=%u -> output=0x%04X", p, r8, g8, b8, r5, g6, b5, pix);
-                    }
-                    uint8_t r8 = (p >> 16) & 0xFF;
-                    uint8_t g8 = (p >> 8) & 0xFF;
-                    uint8_t b8 = p & 0xFF;
-                    uint16_t r5 = r8 >> 3;
-                    uint16_t g6 = g8 >> 2;
-                    uint16_t b5 = b8 >> 3;
-                    uint16_t pix = (r5 << 11) | (g6 << 5) | b5;
-                    for (int sx = 0; sx < scale; sx++) {
-                        this->h_line_16[x * scale + sx] = pix;
-                    }
-                }
-                for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest, this->h_line_16, scaled_w * sizeof(uint16_t));
-                    dest += dest_pitch;
-                }
-                src += pitch;
-            }
-        } else {
+   if (input_bpp == 32) {
+             const uint8_t *src = static_cast<const uint8_t*>(data);
+             for (int y = 0; y < height; y++) {
+                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                 for (int x = 0; x < width; x++) {
+                     convert_xrgb8888_to_rgb565(src_row + x, this->h_line_16 + x * scale, 1);
+                     for (int sx = 1; sx < scale; sx++) {
+                         this->h_line_16[x * scale + sx] = this->h_line_16[x * scale];
+                     }
+                 }
+                 for (int sy = 0; sy < scale; sy++) {
+                     memcpy(dest, this->h_line_16, scaled_w * sizeof(uint16_t));
+                     dest += dest_pitch;
+                 }
+                 src += pitch;
+             }
+         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int y = 0; y < height; y++) {
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
@@ -708,78 +587,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 src += pitch;
             }
         }
-    }
-}
-
-void fbdev_video::log_fb_pixel(int x, int y) {
-    if (game_width == 0) {
-        LOG(INFO, "FB PIXEL: no game rendered yet");
-        return;
-    }
-    int offset_x = (fb_width - game_width) / 2;
-    int offset_y = (fb_height - game_height) / 2;
-    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
-    
-    int start_fb_x = 34;
-    int start_fb_y = 54;
-   for (int i = 0; i < 50; i++) {
-        int fb_x = start_fb_x + i;
-        int fb_y = start_fb_y + i;
-        
-        if (fb_y < 0 || fb_y >= fb_height || fb_x < 0 || fb_x >= fb_width) {
-            LOG(INFO, "FB PIXEL DIAG: idx={} fb=({},{}) OUT OF RANGE fb={}x{}", i, fb_x, fb_y, fb_width, fb_height);
-            continue;
-        }
-        
-        if (fb_bpp == 32) {
-            uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-            uint32_t p = ptr[fb_y * fb_pitch_pixels + fb_x];
-            uint8_t r = p & 0xFF;
-            uint8_t g = (p >> 8) & 0xFF;
-            uint8_t b = (p >> 16) & 0xFF;
-            uint8_t a = (p >> 24) & 0xFF;
-            LOG(INFO, "FB PIXEL DIAG: idx={} fb=({},{}) value=0x{:08X} rgba=({},{},{},{})", i, fb_x, fb_y, p, r, g, b, a);
-        } else {
-            uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-            uint16_t p = ptr[fb_y * fb_pitch_pixels + fb_x];
-            uint8_t r5 = (p >> 11) & 0x1F;
-            uint8_t g6 = (p >> 5) & 0x3F;
-            uint8_t b5 = p & 0x1F;
-            uint8_t r8 = (r5 * 255) / 31;
-            uint8_t g8 = (g6 * 255) / 63;
-            uint8_t b8 = (b5 * 255) / 31;
-            LOG(INFO, "FB PIXEL DIAG: idx={} fb=({},{}) value=0x{:04X} rgb565=({},{},{}) -> rgb8=({},{},{})", i, fb_x, fb_y, p, r5, g6, b5, r8, g8, b8);
-        }
-    }
-    
-   int captured_count = 0;
-    for (int i = 0; i < 50; i++) {
-        if (core_pixel_captured[i]) {
-            captured_count++;
-            if (core_pixel_is_32s[i]) {
-                uint32_t p = static_cast<uint32_t>(core_pixel_values[i]);
-                uint8_t r = p & 0xFF;
-                uint8_t g = (p >> 8) & 0xFF;
-                uint8_t b = (p >> 16) & 0xFF;
-                uint8_t a = (p >> 24) & 0xFF;
-                LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) value=0x{:08X} rgba=({},{},{},{})", i, core_pixel_game_xs[i], core_pixel_game_ys[i], core_pixel_fb_xs[i], core_pixel_fb_ys[i], p, r, g, b, a);
-            } else {
-                uint16_t p = static_cast<uint16_t>(core_pixel_values[i]);
-                uint8_t r5 = (p >> 10) & 0x1F;
-                uint8_t g6 = (p >> 5) & 0x1F;
-                uint8_t b5 = p & 0x1F;
-                uint8_t r8 = (r5 * 255) / 31;
-                uint8_t g8 = (g6 * 255) / 63;
-                uint8_t b8 = (b5 * 255) / 31;
-                LOG(INFO, "CORE PIXEL[{}] game({},{}) fb({},{}) value=0x{:04X} rgb1555=({},{},{}) -> rgb8=({},{},{})", i, core_pixel_game_xs[i], core_pixel_game_ys[i], core_pixel_fb_xs[i], core_pixel_fb_ys[i], p, r5, g6, b5, r8, g8, b8);
-            }
-        }
-    }
-    if (captured_count == 0) {
-        LOG(INFO, "CORE PIXEL: not captured yet (needs render first)");
-    } else {
-        LOG(INFO, "CORE PIXEL: {} of 50 captured", captured_count);
-    }
+  }
 }
 
 }

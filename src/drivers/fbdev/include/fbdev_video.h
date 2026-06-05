@@ -33,7 +33,7 @@ public:
     void gui_leave() override;
     void gui_predraw() override;
 
-    void set_fps_enabled(bool enabled) { fps_enabled = enabled; render_log_enabled = enabled; if (enabled) log_fb_pixel(59, 82); }
+    void set_fps_enabled(bool enabled) { fps_enabled = enabled; render_log_enabled = enabled; }
     bool get_fps_enabled() const { return fps_enabled; }
 
     void set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override;
@@ -44,7 +44,6 @@ private:
     void render_scaled(const void *data, int width, int height, size_t pitch);
     void render_1to1(const void *data, int width, int height, size_t pitch);
     void convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels);
-    void log_fb_pixel(int x, int y);
 
     int fb_fd = -1;
     void *fb_ptr = nullptr;
@@ -81,13 +80,6 @@ private:
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;
     uint64_t last_console_fps_time = 0;
-    uint64_t core_pixel_values[50];
-    int core_pixel_fb_xs[50];
-    int core_pixel_fb_ys[50];
-    int core_pixel_game_xs[50];
-    int core_pixel_game_ys[50];
-    bool core_pixel_is_32s[50];
-    bool core_pixel_captured[50];
     
     uint8_t draw_r = 255;
     uint8_t draw_g = 255;
