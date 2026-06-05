@@ -402,17 +402,108 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
     }
 }
 
+#if defined(__ARM_NEON) && (defined(__arm__) || defined(__aarch64__))
+#include <arm_neon.h>
+#endif
+
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
+
 void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels) {
+#if defined(__ARM_NEON) && (defined(__arm__) || defined(__aarch64__))
+    int i = 0;
+    int bulk = pixels & ~7;
+    if (bulk > 0) {
+        const uint32_t *src_end = src + bulk;
+        while (src < src_end) {
+            uint32x8_t v = vld1q_u32(src);
+            src += 8;
+            
+            uint32x2_t v_lo = vget_low_u32(v);
+            uint32x2_t v_hi = vget_high_u32(v);
+            
+            uint16x4_t r8_lo = vshrn_n_u32(v_lo, 16);
+            uint16x4_t r8_hi = vshrn_n_u32(v_hi, 16);
+            uint16x4_t g8_lo = vshrn_n_u32(v_lo, 8);
+            uint16x4_t g8_hi = vshrn_n_u32(v_hi, 8);
+            uint16x4_t b8_lo = vmovn_u32(v_lo);
+            uint16x4_t b8_hi = vmovn_u32(v_hi);
+            
+            uint16x4_t r5_lo = vshrn_n_u32(vreinterpret_u32_u16(r8_lo), 3);
+            uint16x4_t r5_hi = vshrn_n_u32(vreinterpret_u32_u16(r8_hi), 3);
+            uint16x4_t g6_lo = vshrn_n_u32(vreinterpret_u32_u16(g8_lo), 2);
+            uint16x4_t g6_hi = vshrn_n_u32(vreinterpret_u32_u16(g8_hi), 2);
+            uint16x4_t b5_lo = vshrn_n_u32(vreinterpret_u32_u16(b8_lo), 3);
+            uint16x4_t b5_hi = vshrn_n_u32(vreinterpret_u32_u16(b8_hi), 3);
+            
+            uint16x4_t r5s_lo = vshl_n_u16(r5_lo, 11);
+            uint16x4_t r5s_hi = vshl_n_u16(r5_hi, 11);
+            uint16x4_t g6s_lo = vshl_n_u16(g6_lo, 5);
+            uint16x4_t g6s_hi = vshl_n_u16(g6_hi, 5);
+            
+            uint16x4_t lo = vorr_u16(vorr_u16(r5s_lo, g6s_lo), b5_lo);
+            uint16x4_t hi = vorr_u16(vorr_u16(r5s_hi, g6s_hi), b5_hi);
+            
+            vst1_u16(dst, lo);
+            vst1_u16(dst + 4, hi);
+            dst += 8;
+        }
+    }
+    for (; i < pixels; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        dst[i] = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+    }
+#elif defined(__SSE2__)
+    int i = 0;
+    int bulk = pixels & ~7;
+    if (bulk > 0) {
+        __m128i mask8 = _mm_set1_epi32(0xFF);
+        
+        while (i < bulk) {
+            __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + i));
+            
+            __m128i r8 = _mm_and_si128(_mm_srli_epi32(v, 16), mask8);
+            __m128i g8 = _mm_and_si128(_mm_srli_epi32(v, 8), mask8);
+            __m128i b8 = _mm_and_si128(v, mask8);
+            
+            __m128i r8s = _mm_srai_epi16(_mm_cvtepi32_epi16(r8), 3);
+            __m128i g8s = _mm_srai_epi16(_mm_cvtepi32_epi16(g8), 2);
+            __m128i b8s = _mm_srai_epi16(_mm_cvtepi32_epi16(b8), 3);
+            
+            __m128i r5 = _mm_slli_epi16(r8s, 11);
+            __m128i g5 = _mm_slli_epi16(g8s, 5);
+            
+            __m128i lo = _mm_unpacklo_epi16(r5, g5);
+            __m128i hi = _mm_unpackhi_epi16(r5, g5);
+            
+            lo = _mm_or_si128(lo, _mm_unpacklo_epi16(b8s, b8s));
+            hi = _mm_or_si128(hi, _mm_unpackhi_epi16(b8s, b8s));
+            
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i), lo);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i + 4), hi);
+            i += 8;
+        }
+    }
+    for (; i < pixels; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        dst[i] = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+    }
+#else
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
         uint8_t r8 = (p >> 16) & 0xFF;
         uint8_t g8 = (p >> 8) & 0xFF;
         uint8_t b8 = p & 0xFF;
-        uint16_t r5 = r8 >> 3;
-        uint16_t g6 = g8 >> 2;
-        uint16_t b5 = b8 >> 3;
-        dst[i] = (r5 << 11) | (g6 << 5) | b5;
+        dst[i] = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
     }
+#endif
 }
 
 void fbdev_video::render_1to1(const void *data, int width, int height, size_t pitch) {
