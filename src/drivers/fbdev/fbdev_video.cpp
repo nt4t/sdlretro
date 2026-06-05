@@ -612,29 +612,38 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
 }
 
 void fbdev_video::log_fb_pixel(int x, int y) {
-    if (y < 0 || y >= fb_height || x < 0 || x >= fb_width) {
-        LOG(INFO, "FB PIXEL: out of range ({},{}) fb={}x{}", x, y, fb_width, fb_height);
+    if (game_width == 0) {
+        LOG(INFO, "FB PIXEL: no game rendered yet");
+        return;
+    }
+    int offset_x = (fb_width - game_width) / 2;
+    int offset_y = (fb_height - game_height) / 2;
+    int fb_x = offset_x + x;
+    int fb_y = offset_y + y;
+    
+    if (fb_y < 0 || fb_y >= fb_height || fb_x < 0 || fb_x >= fb_width) {
+        LOG(INFO, "FB PIXEL: out of range game=({},{}) fb=({},{}) fb={}x{}", x, y, fb_x, fb_y, fb_width, fb_height);
         return;
     }
     size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     if (fb_bpp == 32) {
         uint32_t *ptr = static_cast<uint32_t*>(fb_ptr);
-        uint32_t p = ptr[y * fb_pitch_pixels + x];
+        uint32_t p = ptr[fb_y * fb_pitch_pixels + fb_x];
         uint8_t r = p & 0xFF;
         uint8_t g = (p >> 8) & 0xFF;
         uint8_t b = (p >> 16) & 0xFF;
         uint8_t a = (p >> 24) & 0xFF;
-        LOG(INFO, "FB PIXEL pos=({},{}) value=0x{:08X} rgba=({},{},{},{})", x, y, p, r, g, b, a);
+        LOG(INFO, "FB PIXEL game=({},{}) fb=({},{}) value=0x{:08X} rgba=({},{},{},{})", x, y, fb_x, fb_y, p, r, g, b, a);
     } else {
         uint16_t *ptr = static_cast<uint16_t*>(fb_ptr);
-        uint16_t p = ptr[y * fb_pitch_pixels + x];
+        uint16_t p = ptr[fb_y * fb_pitch_pixels + fb_x];
         uint8_t r5 = (p >> 11) & 0x1F;
         uint8_t g6 = (p >> 5) & 0x3F;
         uint8_t b5 = p & 0x1F;
         uint8_t r8 = (r5 * 255) / 31;
         uint8_t g8 = (g6 * 255) / 63;
         uint8_t b8 = (b5 * 255) / 31;
-        LOG(INFO, "FB PIXEL pos=({},{}) value=0x{:04X} rgb565=({},{},{}) -> rgb8=({},{},{})", x, y, p, r5, g6, b5, r8, g8, b8);
+        LOG(INFO, "FB PIXEL game=({},{}) fb=({},{}) value=0x{:04X} rgb565=({},{},{}) -> rgb8=({},{},{})", x, y, fb_x, fb_y, p, r5, g6, b5, r8, g8, b8);
     }
 }
 
