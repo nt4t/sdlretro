@@ -417,23 +417,77 @@ void fbdev_video::draw_text_impl(int x, int y, const char *text, int width, bool
 void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels) {
     for (int i = 0; i < pixels; i++) {
         uint32_t p = src[i];
-        uint16_t r = (p >> 16) & 0x1F;
+        uint16_t r = p & 0x1F;
         uint16_t g = (p >> 8) & 0x3F;
-        uint16_t b = p & 0x1F;
+        uint16_t b = (p >> 16) & 0x1F;
         dst[i] = (r << 11) | (g << 5) | b;
     }
+}
+}
 }
 
 void fbdev_video::render_1to1(const void *data, int width, int height, size_t pitch) {
     int offset_x = (fb_width - width) / 2;
     int offset_y = (fb_height - height) / 2;
-
+    
     size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
-
+    
     int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
     if (input_bpp != 16 && input_bpp != 32) {
         input_bpp = (game_pixel_format == 1) ? 32 : 16;
     }
+    
+    if (fb_bpp == 32) {
+        uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t output_pitch = fb_pitch_pixels;
+        
+        if (input_bpp == 32) {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
+            for (int h = 0; h < height; h++) {
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                memcpy(dest, src_row, width * sizeof(uint32_t));
+                src += pitch;
+                dest += output_pitch;
+            }
+        } else {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
+            for (int h = 0; h < height; h++) {
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
+                for (int x = 0; x < width; x++) {
+                    uint16_t p = src_row[x];
+                    uint16_t r = (p >> 10) & 0x1F;
+                    uint16_t g = (p >> 5) & 0x1F;
+                    uint16_t b = p & 0x1F;
+                    dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                }
+                src += pitch;
+                dest += output_pitch;
+            }
+        }
+    } else {
+        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t output_pitch = fb_pitch_pixels;
+        
+        if (input_bpp == 32) {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
+            for (int h = 0; h < height; h++) {
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                convert_xrgb8888_to_rgb565(src_row, dest, width);
+                src += pitch;
+                dest += output_pitch;
+            }
+        } else {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
+            for (int h = 0; h < height; h++) {
+                memcpy(dest, src, width * sizeof(uint16_t));
+                src += pitch;
+                dest += output_pitch;
+            }
+        }
+    }
+}
 
     LOG(INFO, "render_1to1: fb_bpp={}, fb_pitch={}, fb_pitch_pixels={}, game_fmt={}, input_bpp={}",
         fb_bpp, fb_pitch, fb_pitch_pixels, game_pixel_format, input_bpp);
@@ -481,7 +535,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         uint32_t *dest = static_cast<uint32_t*>(fb_ptr);
         dest += offset_y * fb_pitch_pixels + offset_x;
         size_t output_pitch = fb_pitch_pixels;
-
+        
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
@@ -509,17 +563,46 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
         dest += offset_y * fb_pitch_pixels + offset_x;
         size_t output_pitch = fb_pitch_pixels;
-
+        
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
-            static bool conv_logged = false;
-            if (!conv_logged) {
-                conv_logged = true;
-                const uint32_t *first_pixel = reinterpret_cast<const uint32_t*>(src);
-                char buf[256];
-                snprintf(buf, sizeof(buf), "src first pixel=0x%08X dst first=0x%04X", *first_pixel, dest[0]);
-                LOG(INFO, "{}", buf);
+            for (int h = 0; h < height; h++) {
+                const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
+                convert_xrgb8888_to_rgb565(src_row, dest, width);
+                src += pitch;
+                dest += output_pitch;
             }
+        } else {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
+            for (int h = 0; h < height; h++) {
+                memcpy(dest, src, width * sizeof(uint16_t));
+                src += pitch;
+                dest += output_pitch;
+            }
+        }
+    }
+        } else {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
+            for (int h = 0; h < height; h++) {
+                const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
+                for (int x = 0; x < width; x++) {
+                    uint16_t p = src_row[x];
+                    uint16_t r = (p >> 10) & 0x1F;
+                    uint16_t g = (p >> 5) & 0x1F;
+                    uint16_t b = p & 0x1F;
+                    dest[x] = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+                }
+                src += pitch;
+                dest += output_pitch;
+            }
+        }
+    } else {
+        uint16_t *dest = static_cast<uint16_t*>(fb_ptr);
+        dest += offset_y * fb_pitch_pixels + offset_x;
+        size_t output_pitch = fb_pitch_pixels;
+        
+        if (input_bpp == 32) {
+            const uint8_t *src = static_cast<const uint8_t*>(data);
             for (int h = 0; h < height; h++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
                 convert_xrgb8888_to_rgb565(src_row, dest, width);
