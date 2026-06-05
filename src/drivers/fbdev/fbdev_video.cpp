@@ -432,7 +432,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
 
     int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
     if (input_bpp != 16 && input_bpp != 32) {
-        input_bpp = (game_pixel_format == 1) ? 32 : 16;
+        input_bpp = 32;
     }
 
     LOG(INFO, "render_1to1: fb_bpp={}, fb_pitch={}, fb_pitch_pixels={}, game_fmt={}, input_bpp={}",
@@ -498,7 +498,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
     
     int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
     if (input_bpp != 16 && input_bpp != 32) {
-        input_bpp = (game_pixel_format == 1) ? 32 : 16;
+        input_bpp = 32;
     }
     size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     
