@@ -518,6 +518,362 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
 #endif
 }
 
+#if defined(__ARM_NEON) && defined(__aarch64__)
+inline void expand_32_to_32_neon_a64(const uint32_t *src, uint32_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint32_t p = src[i];
+        uint32x4_t v = vdupq_n_u32(p);
+        int j = 0;
+        for (; j < scale - 3; j += 4) {
+            vst1q_u32(dst + i * scale + j, v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = p;
+        }
+    }
+}
+
+inline void expand_16_to_32_neon_a64(const uint16_t *src, uint32_t *dst, int width, int scale) {
+    int i = 0;
+    int bulk = width & ~7;
+    if (bulk > 0) {
+        while (i < bulk) {
+            uint16x8_t p16 = vld1_u16(src + i);
+            uint32x4_t lo = vmovl_u16(vget_low_u16(p16));
+            uint32x4_t hi = vmovl_u16(vget_high_u16(p16));
+            uint32x4_t r8 = vshrq_n_u32(lo, 16);
+            uint32x4_t g8 = vshrq_n_u32(lo, 8);
+            uint32x4_t b8 = vmovn_u32(lo);
+            uint32x4_t r8h = vshrq_n_u32(hi, 16);
+            uint32x4_t g8h = vshrq_n_u32(hi, 8);
+            uint32x4_t b8h = vmovn_u32(hi);
+            uint32x4_t r5 = vshrq_n_u32(r8, 3);
+            uint32x4_t g6 = vshrq_n_u32(g8, 2);
+            uint32x4_t r5h = vshrq_n_u32(r8h, 3);
+            uint32x4_t g6h = vshrq_n_u32(g8h, 2);
+            uint32x4_t lo32 = vorrq_u32(vshlq_n_u32(r5, 11), vshlq_n_u32(g6, 5));
+            uint32x4_t hi32 = vorrq_u32(vshlq_n_u32(r5h, 11), vshlq_n_u32(g6h, 5));
+            lo32 = vorrq_u32(lo32, b8);
+            hi32 = vorrq_u32(hi32, b8h);
+            for (int s = 0; s < scale; s++) {
+                dst[(i + 0) * scale + s] = vgetq_lane_u32(lo32, 0);
+                dst[(i + 1) * scale + s] = vgetq_lane_u32(lo32, 1);
+                dst[(i + 2) * scale + s] = vgetq_lane_u32(lo32, 2);
+                dst[(i + 3) * scale + s] = vgetq_lane_u32(lo32, 3);
+                dst[(i + 4) * scale + s] = vgetq_lane_u32(hi32, 0);
+                dst[(i + 5) * scale + s] = vgetq_lane_u32(hi32, 1);
+                dst[(i + 6) * scale + s] = vgetq_lane_u32(hi32, 2);
+                dst[(i + 7) * scale + s] = vgetq_lane_u32(hi32, 3);
+            }
+            i += 8;
+        }
+    }
+    for (; i < width; i++) {
+        uint16_t p16 = src[i];
+        uint16_t r = (p16 >> 10) & 0x1F;
+        uint16_t g = (p16 >> 5) & 0x1F;
+        uint16_t b = p16 & 0x1F;
+        uint32_t p32 = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+        for (int s = 0; s < scale; s++) {
+            dst[i * scale + s] = p32;
+        }
+    }
+}
+
+inline void expand_32_to_16_neon_a64(const uint32_t *src, uint16_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        uint16_t pix = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+        uint16x4_t v = vdupq_n_u16(pix);
+        int j = 0;
+        for (; j < scale - 3; j += 4) {
+            vst1q_u16(dst + i * scale + j, v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+
+inline void expand_16_to_16_neon_a64(const uint16_t *src, uint16_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint16_t pix = src[i];
+        uint16x4_t v = vdupq_n_u16(pix);
+        int j = 0;
+        for (; j < scale - 3; j += 4) {
+            vst1q_u16(dst + i * scale + j, v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+#elif defined(__ARM_NEON) && defined(__arm__)
+inline void expand_32_to_32_neon_arm32(const uint32_t *src, uint32_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint32_t p = src[i];
+        uint32x2_t v = vdup_n_u32(p);
+        int j = 0;
+        for (; j < scale - 1; j += 2) {
+            vst1_u32(dst + i * scale + j, v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = p;
+        }
+    }
+}
+
+inline void expand_16_to_32_neon_arm32(const uint16_t *src, uint32_t *dst, int width, int scale) {
+    int i = 0;
+    int bulk = width & ~3;
+    if (bulk > 0) {
+        while (i < bulk) {
+            uint16x4_t p16 = vld1_u16(src + i);
+            uint32x2_t lo = vmovl_u16(vget_low_u16(p16));
+            uint32x2_t hi = vmovl_u16(vget_high_u16(p16));
+            uint32x2_t r8 = vshrq_n_u32(lo, 16);
+            uint32x2_t g8 = vshrq_n_u32(lo, 8);
+            uint32x2_t b8 = vmovn_u32(lo);
+            uint32x2_t r8h = vshrq_n_u32(hi, 16);
+            uint32x2_t g8h = vshrq_n_u32(hi, 8);
+            uint32x2_t b8h = vmovn_u32(hi);
+            uint32x2_t r5 = vshrq_n_u32(r8, 3);
+            uint32x2_t g6 = vshrq_n_u32(g8, 2);
+            uint32x2_t r5h = vshrq_n_u32(r8h, 3);
+            uint32x2_t g6h = vshrq_n_u32(g8h, 2);
+            uint32x2_t lo32 = vorr_u32(vshl_n_u32(r5, 11), vshl_n_u32(g6, 5));
+            uint32x2_t hi32 = vorr_u32(vshl_n_u32(r5h, 11), vshl_n_u32(g6h, 5));
+            lo32 = vorr_u32(lo32, b8);
+            hi32 = vorr_u32(hi32, b8h);
+            for (int s = 0; s < scale; s++) {
+                dst[(i + 0) * scale + s] = vget_lane_u32(lo32, 0);
+                dst[(i + 1) * scale + s] = vget_lane_u32(lo32, 1);
+                dst[(i + 2) * scale + s] = vget_lane_u32(hi32, 0);
+                dst[(i + 3) * scale + s] = vget_lane_u32(hi32, 1);
+            }
+            i += 4;
+        }
+    }
+    for (; i < width; i++) {
+        uint16_t p16 = src[i];
+        uint16_t r = (p16 >> 10) & 0x1F;
+        uint16_t g = (p16 >> 5) & 0x1F;
+        uint16_t b = p16 & 0x1F;
+        uint32_t p32 = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+        for (int s = 0; s < scale; s++) {
+            dst[i * scale + s] = p32;
+        }
+    }
+}
+
+inline void expand_32_to_16_neon_arm32(const uint32_t *src, uint16_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        uint16_t pix = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+        uint16x4_t v = vdup_n_u16(pix);
+        int j = 0;
+        for (; j < scale - 1; j += 2) {
+            vst1_u16(dst + i * scale + j, v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+
+inline void expand_16_to_16_neon_arm32(const uint16_t *src, uint16_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint16_t pix = src[i];
+        uint16x4_t v = vdup_n_u16(pix);
+        int j = 0;
+        for (; j < scale - 1; j += 2) {
+            vst1_u16(dst + i * scale + j, v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+#elif defined(__SSE2__)
+inline void expand_32_to_32_sse2(const uint32_t *src, uint32_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint32_t p = src[i];
+        __m128i v = _mm_set1_epi32(p);
+        int j = 0;
+        for (; j < scale - 3; j += 4) {
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i * scale + j), v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = p;
+        }
+    }
+}
+
+inline void expand_16_to_32_sse2(const uint16_t *src, uint32_t *dst, int width, int scale) {
+    int i = 0;
+    int bulk = width & ~7;
+    if (bulk > 0) {
+        __m128i mask8 = _mm_set1_epi32(0xFF);
+        while (i < bulk) {
+            __m128i p16 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src + i));
+            __m128i p16h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src + i + 4));
+            __m128i r8 = _mm_and_si128(_mm_srli_epi32(p16, 16), mask8);
+            __m128i g8 = _mm_and_si128(_mm_srli_epi32(p16, 8), mask8);
+            __m128i b8 = _mm_and_si128(p16, mask8);
+            __m128i r8h = _mm_and_si128(_mm_srli_epi32(p16h, 16), mask8);
+            __m128i g8h = _mm_and_si128(_mm_srli_epi32(p16h, 8), mask8);
+            __m128i b8h = _mm_and_si128(p16h, mask8);
+            __m128i r5 = _mm_srai_epi16(_mm_cvtepi32_epi16(r8), 3);
+            __m128i g5 = _mm_srai_epi16(_mm_cvtepi32_epi16(g8), 2);
+            __m128i r5h = _mm_srai_epi16(_mm_cvtepi32_epi16(r8h), 3);
+            __m128i g5h = _mm_srai_epi16(_mm_cvtepi32_epi16(g8h), 2);
+            __m128i lo = _mm_unpacklo_epi16(r5, g5);
+            __m128i hi = _mm_unpackhi_epi16(r5, g5);
+            __m128i loh = _mm_unpacklo_epi16(r5h, g5h);
+            __m128i hih = _mm_unpackhi_epi16(r5h, g5h);
+            lo = _mm_or_si128(lo, _mm_unpacklo_epi16(b8, b8));
+            hi = _mm_or_si128(hi, _mm_unpackhi_epi16(b8, b8));
+            loh = _mm_or_si128(loh, _mm_unpacklo_epi16(b8h, b8h));
+            hih = _mm_or_si128(hih, _mm_unpackhi_epi16(b8h, b8h));
+            for (int s = 0; s < scale; s++) {
+                dst[(i + 0) * scale + s] = _mm_extract_epi32(lo, 0);
+                dst[(i + 1) * scale + s] = _mm_extract_epi32(lo, 1);
+                dst[(i + 2) * scale + s] = _mm_extract_epi32(lo, 2);
+                dst[(i + 3) * scale + s] = _mm_extract_epi32(lo, 3);
+                dst[(i + 4) * scale + s] = _mm_extract_epi32(loh, 0);
+                dst[(i + 5) * scale + s] = _mm_extract_epi32(loh, 1);
+                dst[(i + 6) * scale + s] = _mm_extract_epi32(loh, 2);
+                dst[(i + 7) * scale + s] = _mm_extract_epi32(loh, 3);
+            }
+            i += 8;
+        }
+    }
+    for (; i < width; i++) {
+        uint16_t p16 = src[i];
+        uint16_t r = (p16 >> 10) & 0x1F;
+        uint16_t g = (p16 >> 5) & 0x1F;
+        uint16_t b = p16 & 0x1F;
+        uint32_t p32 = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+        for (int s = 0; s < scale; s++) {
+            dst[i * scale + s] = p32;
+        }
+    }
+}
+
+inline void expand_32_to_16_sse2(const uint32_t *src, uint16_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        uint16_t pix = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+        __m128i v = _mm_set1_epi16(pix);
+        int j = 0;
+        for (; j < scale - 7; j += 8) {
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i * scale + j), v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+
+inline void expand_16_to_16_sse2(const uint16_t *src, uint16_t *dst, int width, int scale) {
+    int i = 0;
+    for (; i < width; i++) {
+        uint16_t pix = src[i];
+        __m128i v = _mm_set1_epi16(pix);
+        int j = 0;
+        for (; j < scale - 7; j += 8) {
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i * scale + j), v);
+        }
+        for (; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+#else
+inline void expand_32_to_32_scalar(const uint32_t *src, uint32_t *dst, int width, int scale) {
+    for (int i = 0; i < width; i++) {
+        uint32_t p = src[i];
+        for (int j = 0; j < scale; j++) {
+            dst[i * scale + j] = p;
+        }
+    }
+}
+
+inline void expand_16_to_32_scalar(const uint16_t *src, uint32_t *dst, int width, int scale) {
+    for (int i = 0; i < width; i++) {
+        uint16_t p16 = src[i];
+        uint16_t r = (p16 >> 10) & 0x1F;
+        uint16_t g = (p16 >> 5) & 0x1F;
+        uint16_t b = p16 & 0x1F;
+        uint32_t p32 = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
+        for (int j = 0; j < scale; j++) {
+            dst[i * scale + j] = p32;
+        }
+    }
+}
+
+inline void expand_32_to_16_scalar(const uint32_t *src, uint16_t *dst, int width, int scale) {
+    for (int i = 0; i < width; i++) {
+        uint32_t p = src[i];
+        uint8_t r8 = (p >> 16) & 0xFF;
+        uint8_t g8 = (p >> 8) & 0xFF;
+        uint8_t b8 = p & 0xFF;
+        uint16_t pix = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
+        for (int j = 0; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+
+inline void expand_16_to_16_scalar(const uint16_t *src, uint16_t *dst, int width, int scale) {
+    for (int i = 0; i < width; i++) {
+        uint16_t pix = src[i];
+        for (int j = 0; j < scale; j++) {
+            dst[i * scale + j] = pix;
+        }
+    }
+}
+#endif
+
+#if defined(__ARM_NEON) && defined(__aarch64__)
+#define EXPAND_32_TO_32 expand_32_to_32_neon_a64
+#define EXPAND_16_TO_32 expand_16_to_32_neon_a64
+#define EXPAND_32_TO_16 expand_32_to_16_neon_a64
+#define EXPAND_16_TO_16 expand_16_to_16_neon_a64
+#elif defined(__ARM_NEON) && defined(__arm__)
+#define EXPAND_32_TO_32 expand_32_to_32_neon_arm32
+#define EXPAND_16_TO_32 expand_16_to_32_neon_arm32
+#define EXPAND_32_TO_16 expand_32_to_16_neon_arm32
+#define EXPAND_16_TO_16 expand_16_to_16_neon_arm32
+#elif defined(__SSE2__)
+#define EXPAND_32_TO_32 expand_32_to_32_sse2
+#define EXPAND_16_TO_32 expand_16_to_32_sse2
+#define EXPAND_32_TO_16 expand_32_to_16_sse2
+#define EXPAND_16_TO_16 expand_16_to_16_sse2
+#else
+#define EXPAND_32_TO_32 expand_32_to_32_scalar
+#define EXPAND_16_TO_32 expand_16_to_32_scalar
+#define EXPAND_32_TO_16 expand_32_to_16_scalar
+#define EXPAND_16_TO_16 expand_16_to_16_scalar
+#endif
+
 void fbdev_video::render_1to1(const void *data, int width, int height, size_t pitch) {
     int offset_x = (fb_width - width) / 2;
     int offset_y = (fb_height - height) / 2;
@@ -594,12 +950,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         if (input_bpp == 32) {
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
             for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    uint32_t p = src_row[x];
-                    for (int sx = 0; sx < scale; sx++) {
-                        this->h_line_32[x * scale + sx] = p;
-                    }
-                }
+                EXPAND_32_TO_32(src_row, this->h_line_32, width, scale);
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest_row, this->h_line_32, scaled_w * sizeof(uint32_t));
                     dest_row += fb_pitch_pixels;
@@ -609,16 +960,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         } else {
             const uint16_t *src_row = static_cast<const uint16_t*>(data);
             for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    uint16_t p16 = src_row[x];
-                    uint16_t r = (p16 >> 10) & 0x1F;
-                    uint16_t g = (p16 >> 5) & 0x1F;
-                    uint16_t b = p16 & 0x1F;
-                    uint32_t p32 = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
-                    for (int sx = 0; sx < scale; sx++) {
-                        this->h_line_32[x * scale + sx] = p32;
-                    }
-                }
+                EXPAND_16_TO_32(src_row, this->h_line_32, width, scale);
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest_row, this->h_line_32, scaled_w * sizeof(uint32_t));
                     dest_row += fb_pitch_pixels;
@@ -633,12 +975,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
             for (int y = 0; y < height; y++) {
                 convert_xrgb8888_to_rgb565(src_row, this->h_line_16, width);
-                for (int x = 0; x < width; x++) {
-                    uint16_t pix = this->h_line_16[x];
-                    for (int sx = 1; sx < scale; sx++) {
-                        this->h_line_16[x * scale + sx] = pix;
-                    }
-                }
+                EXPAND_16_TO_16(this->h_line_16, this->h_line_16, width, scale);
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest_row, this->h_line_16, scaled_w * sizeof(uint16_t));
                     dest_row += fb_pitch_pixels;
@@ -648,12 +985,7 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         } else {
             const uint16_t *src_row = static_cast<const uint16_t*>(data);
             for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    uint16_t pix = src_row[x];
-                    for (int sx = 0; sx < scale; sx++) {
-                        this->h_line_16[x * scale + sx] = pix;
-                    }
-                }
+                EXPAND_16_TO_16(src_row, this->h_line_16, width, scale);
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest_row, this->h_line_16, scaled_w * sizeof(uint16_t));
                     dest_row += fb_pitch_pixels;
