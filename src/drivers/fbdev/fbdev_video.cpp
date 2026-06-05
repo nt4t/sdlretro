@@ -639,30 +639,24 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
-            
             for (int y = 0; y < height; y++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
-                
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
                     for (int sx = 0; sx < scale; sx++) {
                         h_line_32[x * scale + sx] = p;
                     }
                 }
-                
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
                     dest += dest_pitch;
                 }
-                
                 src += pitch;
             }
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
-            
             for (int y = 0; y < height; y++) {
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
-                
                 for (int x = 0; x < width; x++) {
                     uint16_t p16 = src_row[x];
                     uint16_t r = (p16 >> 10) & 0x1F;
@@ -673,12 +667,10 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                         h_line_32[x * scale + sx] = h_line_32[x * scale];
                     }
                 }
-                
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest, h_line_32, scaled_w * sizeof(uint32_t));
                     dest += dest_pitch;
                 }
-                
                 src += pitch;
             }
         }
@@ -689,47 +681,38 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         
         if (input_bpp == 32) {
             const uint8_t *src = static_cast<const uint8_t*>(data);
-            
             for (int y = 0; y < height; y++) {
                 const uint32_t *src_row = reinterpret_cast<const uint32_t*>(src);
-                
                 for (int x = 0; x < width; x++) {
                     uint32_t p = src_row[x];
                     uint16_t r = (p >> 16) & 0x1F;
                     uint16_t g = (p >> 8) & 0x3F;
                     uint16_t b = p & 0x1F;
                     uint16_t pix = (r << 11) | (g << 5) | b;
-                    
                     for (int sx = 0; sx < scale; sx++) {
                         h_line_16[x * scale + sx] = pix;
                     }
                 }
-                
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
                     dest += dest_pitch;
                 }
-                
                 src += pitch;
             }
         } else {
             const uint8_t *src = static_cast<const uint8_t*>(data);
-            
             for (int y = 0; y < height; y++) {
                 const uint16_t *src_row = reinterpret_cast<const uint16_t*>(src);
-                
                 for (int x = 0; x < width; x++) {
                     uint16_t pix = src_row[x];
                     for (int sx = 0; sx < scale; sx++) {
                         h_line_16[x * scale + sx] = pix;
                     }
                 }
-                
                 for (int sy = 0; sy < scale; sy++) {
                     memcpy(dest, h_line_16, scaled_w * sizeof(uint16_t));
                     dest += dest_pitch;
                 }
-                
                 src += pitch;
             }
         }
