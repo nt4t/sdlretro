@@ -808,18 +808,14 @@ inline void expand_16_to_16_scalar(const uint16_t *src, uint16_t *dst, int width
 #endif
 
 static inline uint16_t convert_rgb565_to_fb(uint16_t p, int fb_r_shift, int fb_r_len, int fb_g_shift, int fb_g_len, int fb_b_shift, int fb_b_len) {
-    uint8_t r = (p >> 10) & 0x1F;
-    uint8_t g = (p >> 5) & 0x1F;
-    uint8_t b = p & 0x1F;
-    
-    r = (r << 3) | (r >> 2);
-    g = (g << 2) | (g >> 4);
-    b = (b << 3) | (b >> 2);
+    uint16_t r = (p >> 10) & 0x1F;
+    uint16_t g = (p >> 5) & 0x3F;
+    uint16_t b = p & 0x1F;
     
     uint16_t out = 0;
-    out |= ((uint16_t)r & ((1 << fb_r_len) - 1)) << fb_r_shift;
-    out |= ((uint16_t)g & ((1 << fb_g_len) - 1)) << fb_g_shift;
-    out |= ((uint16_t)b & ((1 << fb_b_len) - 1)) << fb_b_shift;
+    out |= (r << fb_r_shift);
+    out |= (g << fb_g_shift);
+    out |= (b << fb_b_shift);
     return out;
 }
 
