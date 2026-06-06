@@ -974,6 +974,8 @@ struct parallel_render_job {
     int scale;
     int start_row;
     int end_row;
+    uint32_t *h_line_buf = nullptr;
+    uint16_t *h_line_16_buf = nullptr;
 };
 
 void fbdev_video::render_scaled_parallel(const void *data, int width, int height, size_t pitch) {
@@ -1003,7 +1005,9 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
     int rows_per_thread = total_rows / num_threads;
     if (rows_per_thread == 0) rows_per_thread = 1;
     
-    std::vector<std::thread> threads;
+ std::vector<std::thread> threads;
+    std::vector<parallel_render_job> jobs;
+    jobs.reserve(num_threads);
     
     for (int t = 0; t < num_threads; t++) {
         int start_row = t * rows_per_thread;
@@ -1011,7 +1015,7 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
         if (end_row > total_rows) end_row = total_rows;
         if (start_row >= total_rows) break;
         
-        parallel_render_job job;
+       parallel_render_job job;
         job.data = data;
         job.width = width;
         job.height = height;
@@ -1027,22 +1031,70 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
         job.scale = scale;
         job.start_row = start_row;
         job.end_row = end_row;
+        job.h_line_buf = new uint32_t[scaled_w];
+        job.h_line_16_buf = new uint16_t[scaled_w];
+        jobs.push_back(job);
         
-        threads.emplace_back([this, job]() {
-            size_t fb_pitch_pixels = job.fb_pitch_pixels;
-            void *target = job.target;
-            int fb_bpp = job.fb_bpp;
-            int scaled_w = job.scaled_w;
+        threads.emplace_back([&, idx = jobs.size() - 1]() {
+            parallel_render_job &j = jobs[idx];
+            int width = j.width;
+            int scale = j.scale;
+            int offset_x = j.offset_x;
+            int offset_y = j.offset_y;
+            int input_bpp = j.input_bpp;
+            int fb_bpp = j.fb_bpp;
+            int scaled_w = j.scaled_w;
+            size_t fb_pitch_pixels = j.fb_pitch_pixels;
+            const void *data = j.data;
+            int height = j.height;
+            size_t pitch = j.pitch;
+            void *target = j.target;
+            
+            for (int y = j.start_row; y < j.end_row; y++) {
+                int input_row = y / scale;
+                if (input_row >= height) continue;
+                
+                const uint8_t *src_data = static_cast<const uint8_t*>(data);
+                const uint32_t *src_row_32 = reinterpret_cast<const uint32_t*>(src_data + input_row * pitch);
+                const uint16_t *src_row_16 = reinterpret_cast<const uint16_t*>(src_data + input_row * pitch);
+                
+                uint8_t *dest_data = static_cast<uint8_t*>(target);
+                uint32_t *dest_row_32 = reinterpret_cast<uint32_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
+                uint16_t *dest_row_16 = reinterpret_cast<uint16_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
+                
+                if (fb_bpp == 32) {
+                    if (input_bpp == 32) {
+                        EXPAND_32_TO_32(src_row_32, j.h_line_buf, width, scale);
+                        memcpy(dest_row_32, j.h_line_buf, scaled_w * sizeof(uint32_t));
+                    } else {
+                        EXPAND_16_TO_32(src_row_16, j.h_line_buf, width, scale);
+                        memcpy(dest_row_32, j.h_line_buf, scaled_w * sizeof(uint32_t));
+                    }
+                } else {
+                    if (input_bpp == 32) {
+                        convert_xrgb8888_to_rgb565(src_row_32, j.h_line_16_buf, width);
+                        EXPAND_16_TO_16(j.h_line_16_buf, j.h_line_buf, width, scale);
+                        memcpy(dest_row_16, j.h_line_buf, scaled_w * sizeof(uint16_t));
+                    } else {
+                        EXPAND_16_TO_16(src_row_16, j.h_line_buf, width, scale);
+                        memcpy(dest_row_16, j.h_line_buf, scaled_w * sizeof(uint16_t));
+                    }
+                }
+            }
+        });
+    }
+            int width = job.width;
             int scale = job.scale;
             int offset_x = job.offset_x;
             int offset_y = job.offset_y;
             int input_bpp = job.input_bpp;
+            int fb_bpp = job.fb_bpp;
+            int scaled_w = job.scaled_w;
+            size_t fb_pitch_pixels = job.fb_pitch_pixels;
             const void *data = job.data;
             int height = job.height;
             size_t pitch = job.pitch;
-            
-            uint32_t *h_line_buf = new uint32_t[scaled_w];
-            uint16_t *h_line_16_buf = new uint16_t[scaled_w];
+            void *target = job.target;
             
             for (int y = job.start_row; y < job.end_row; y++) {
                 int input_row = y / scale;
@@ -1058,26 +1110,23 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
                 
                 if (fb_bpp == 32) {
                     if (input_bpp == 32) {
-                        EXPAND_32_TO_32(src_row_32, h_line_buf, width, scale);
-                        memcpy(dest_row_32, h_line_buf, scaled_w * sizeof(uint32_t));
+                        EXPAND_32_TO_32(src_row_32, job.h_line_buf, width, scale);
+                        memcpy(dest_row_32, job.h_line_buf, scaled_w * sizeof(uint32_t));
                     } else {
-                        EXPAND_16_TO_32(src_row_16, h_line_buf, width, scale);
-                        memcpy(dest_row_32, h_line_buf, scaled_w * sizeof(uint32_t));
+                        EXPAND_16_TO_32(src_row_16, job.h_line_buf, width, scale);
+                        memcpy(dest_row_32, job.h_line_buf, scaled_w * sizeof(uint32_t));
                     }
                 } else {
                     if (input_bpp == 32) {
-                        convert_xrgb8888_to_rgb565(src_row_32, h_line_16_buf, width);
-                        EXPAND_16_TO_16(h_line_16_buf, h_line_buf, width, scale);
-                        memcpy(dest_row_16, h_line_buf, scaled_w * sizeof(uint16_t));
+                        convert_xrgb8888_to_rgb565(src_row_32, job.h_line_16_buf, width);
+                        EXPAND_16_TO_16(job.h_line_16_buf, job.h_line_buf, width, scale);
+                        memcpy(dest_row_16, job.h_line_buf, scaled_w * sizeof(uint16_t));
                     } else {
-                        EXPAND_16_TO_16(src_row_16, h_line_buf, width, scale);
-                        memcpy(dest_row_16, h_line_buf, scaled_w * sizeof(uint16_t));
+                        EXPAND_16_TO_16(src_row_16, job.h_line_buf, width, scale);
+                        memcpy(dest_row_16, job.h_line_buf, scaled_w * sizeof(uint16_t));
                     }
                 }
             }
-            
-            delete[] h_line_buf;
-            delete[] h_line_16_buf;
         });
     }
     
@@ -1085,6 +1134,11 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
         if (th.joinable()) {
             th.join();
         }
+    }
+    
+    for (auto &job : jobs) {
+        delete[] job.h_line_buf;
+        delete[] job.h_line_16_buf;
     }
     
 #ifdef MAP_WRITECOMBINE
