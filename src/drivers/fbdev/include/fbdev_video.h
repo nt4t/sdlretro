@@ -6,6 +6,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
+#include <thread>
+#include <functional>
 
 namespace drivers {
 
@@ -42,6 +45,7 @@ public:
 private:
     void draw_text_impl(int x, int y, const char *text, int width, bool shadow);
     void render_scaled(const void *data, int width, int height, size_t pitch);
+    void render_scaled_parallel(const void *data, int width, int height, size_t pitch);
     void render_1to1(const void *data, int width, int height, size_t pitch);
     void convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst, int pixels);
 
@@ -82,6 +86,8 @@ private:
     bool render_log_enabled = false;
     bool pixel_format_logged = false;
     bool simd_enabled = false;
+    bool parallel_render_enabled = false;
+    int render_threads = 1;
     int frame_count = 0;
     float current_fps = 0.f;
     uint64_t last_fps_time = 0;

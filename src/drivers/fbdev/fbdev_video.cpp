@@ -32,6 +32,15 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
     last_fps_time = 0;
     fb_double_buffering = true;
     
+    unsigned hw_threads = std::thread::hardware_concurrency();
+    if (hw_threads > 1) {
+        render_threads = hw_threads;
+        parallel_render_enabled = true;
+        LOG(INFO, "fbdev: Parallel render enabled ({} threads)", render_threads);
+    } else {
+        parallel_render_enabled = false;
+    }
+    
     memset(fb_ptr, 0, fb_size);
     LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}, line_length={}", fb_width, fb_height, fb_bpp, fb_pitch, finfo.line_length);
     LOG(INFO, "fb_pixel_fmt: r={}/{} g={}/{} b={}/{}", vinfo.red.offset, vinfo.red.length, vinfo.green.offset, vinfo.green.length, vinfo.blue.offset, vinfo.blue.length);
@@ -152,7 +161,11 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
     }
     
      if (scaling_mode == 0 && scale > 1) {
-        render_scaled(data, width, height, pitch);
+        if (parallel_render_enabled) {
+            render_scaled_parallel(data, width, height, pitch);
+        } else {
+            render_scaled(data, width, height, pitch);
+        }
     } else {
         render_1to1(data, width, height, pitch);
     }
@@ -941,6 +954,142 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
 #ifdef MAP_WRITECOMBINE
     if (mmap_flags & MAP_WRITECOMBINE) {
         msync(fb_ptr, fb_size, MS_ASYNC);
+    }
+#endif
+}
+
+struct parallel_render_job {
+    const void *data;
+    int width;
+    int height;
+    size_t pitch;
+    int scaled_w;
+    int scaled_h;
+    int offset_x;
+    int offset_y;
+    int input_bpp;
+    size_t fb_pitch_pixels;
+    void *target;
+    int fb_bpp;
+    int scale;
+    int start_row;
+    int end_row;
+};
+
+void fbdev_video::render_scaled_parallel(const void *data, int width, int height, size_t pitch) {
+    int scaled_w = width * scale;
+    int scaled_h = height * scale;
+    int offset_x = (fb_width - scaled_w) / 2;
+    int offset_y = (fb_height - scaled_h) / 2;
+    
+    int input_bpp = (pitch > 0 && width > 0) ? static_cast<int>((pitch / width) * 8) : 16;
+    if (input_bpp != 16 && input_bpp != 32) {
+        input_bpp = (game_pixel_format == 1) ? 32 : 16;
+    }
+    size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
+    
+    void *target = fb_ptr;
+    if (fb_double_buffering && fb_back_buffer) {
+        target = fb_back_buffer;
+    }
+    
+    int num_threads = render_threads;
+    if (num_threads <= 0) {
+        unsigned hw_threads = std::thread::hardware_concurrency();
+        num_threads = hw_threads > 0 ? hw_threads : 1;
+    }
+    
+    int total_rows = scaled_h;
+    int rows_per_thread = total_rows / num_threads;
+    if (rows_per_thread == 0) rows_per_thread = 1;
+    
+    std::vector<std::thread> threads;
+    
+    for (int t = 0; t < num_threads; t++) {
+        int start_row = t * rows_per_thread;
+        int end_row = (t + 1) * rows_per_thread;
+        if (end_row > total_rows) end_row = total_rows;
+        if (start_row >= total_rows) break;
+        
+        parallel_render_job job;
+        job.data = data;
+        job.width = width;
+        job.height = height;
+        job.pitch = pitch;
+        job.scaled_w = scaled_w;
+        job.scaled_h = scaled_h;
+        job.offset_x = offset_x;
+        job.offset_y = offset_y;
+        job.input_bpp = input_bpp;
+        job.fb_pitch_pixels = fb_pitch_pixels;
+        job.target = target;
+        job.fb_bpp = fb_bpp;
+        job.scale = scale;
+        job.start_row = start_row;
+        job.end_row = end_row;
+        
+        threads.emplace_back([this, job]() {
+            size_t fb_pitch_pixels = job.fb_pitch_pixels;
+            void *target = job.target;
+            int fb_bpp = job.fb_bpp;
+            int scaled_w = job.scaled_w;
+            int scale = job.scale;
+            int offset_x = job.offset_x;
+            int offset_y = job.offset_y;
+            int input_bpp = job.input_bpp;
+            const void *data = job.data;
+            int height = job.height;
+            size_t pitch = job.pitch;
+            
+            uint32_t *h_line_buf = new uint32_t[scaled_w];
+            uint16_t *h_line_16_buf = new uint16_t[scaled_w];
+            
+            for (int y = job.start_row; y < job.end_row; y++) {
+                int input_row = y / scale;
+                if (input_row >= height) continue;
+                
+                const uint8_t *src_data = static_cast<const uint8_t*>(data);
+                const uint32_t *src_row_32 = static_cast<const uint32_t*>(src_data + input_row * pitch);
+                const uint16_t *src_row_16 = static_cast<const uint16_t*>(src_data + input_row * pitch);
+                
+                uint8_t *dest_data = static_cast<uint8_t*>(target);
+                uint32_t *dest_row_32 = static_cast<uint32_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
+                uint16_t *dest_row_16 = static_cast<uint16_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
+                
+                if (fb_bpp == 32) {
+                    if (input_bpp == 32) {
+                        EXPAND_32_TO_32(src_row_32, h_line_buf, width, scale);
+                        memcpy(dest_row_32, h_line_buf, scaled_w * sizeof(uint32_t));
+                    } else {
+                        EXPAND_16_TO_32(src_row_16, h_line_buf, width, scale);
+                        memcpy(dest_row_32, h_line_buf, scaled_w * sizeof(uint32_t));
+                    }
+                } else {
+                    if (input_bpp == 32) {
+                        convert_xrgb8888_to_rgb565(src_row_32, h_line_16_buf, width);
+                        EXPAND_16_TO_16(h_line_16_buf, h_line_buf, width, scale);
+                        memcpy(dest_row_16, h_line_buf, scaled_w * sizeof(uint16_t));
+                    } else {
+                        EXPAND_16_TO_16(src_row_16, h_line_buf, width, scale);
+                        memcpy(dest_row_16, h_line_buf, scaled_w * sizeof(uint16_t));
+                    }
+                }
+            }
+            
+            delete[] h_line_buf;
+            delete[] h_line_16_buf;
+        });
+    }
+    
+    for (auto &th : threads) {
+        if (th.joinable()) {
+            th.join();
+        }
+    }
+    
+#ifdef MAP_WRITECOMBINE
+    if (mmap_flags & MAP_WRITECOMBINE) {
+        msync(target, fb_size, MS_ASYNC);
     }
 #endif
 }
