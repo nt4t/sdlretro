@@ -1083,52 +1083,6 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
             }
         });
     }
-            int width = job.width;
-            int scale = job.scale;
-            int offset_x = job.offset_x;
-            int offset_y = job.offset_y;
-            int input_bpp = job.input_bpp;
-            int fb_bpp = job.fb_bpp;
-            int scaled_w = job.scaled_w;
-            size_t fb_pitch_pixels = job.fb_pitch_pixels;
-            const void *data = job.data;
-            int height = job.height;
-            size_t pitch = job.pitch;
-            void *target = job.target;
-            
-            for (int y = job.start_row; y < job.end_row; y++) {
-                int input_row = y / scale;
-                if (input_row >= height) continue;
-                
-                const uint8_t *src_data = static_cast<const uint8_t*>(data);
-                const uint32_t *src_row_32 = reinterpret_cast<const uint32_t*>(src_data + input_row * pitch);
-                const uint16_t *src_row_16 = reinterpret_cast<const uint16_t*>(src_data + input_row * pitch);
-                
-                uint8_t *dest_data = static_cast<uint8_t*>(target);
-                uint32_t *dest_row_32 = reinterpret_cast<uint32_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
-                uint16_t *dest_row_16 = reinterpret_cast<uint16_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
-                
-                if (fb_bpp == 32) {
-                    if (input_bpp == 32) {
-                        EXPAND_32_TO_32(src_row_32, job.h_line_buf, width, scale);
-                        memcpy(dest_row_32, job.h_line_buf, scaled_w * sizeof(uint32_t));
-                    } else {
-                        EXPAND_16_TO_32(src_row_16, job.h_line_buf, width, scale);
-                        memcpy(dest_row_32, job.h_line_buf, scaled_w * sizeof(uint32_t));
-                    }
-                } else {
-                    if (input_bpp == 32) {
-                        convert_xrgb8888_to_rgb565(src_row_32, job.h_line_16_buf, width);
-                        EXPAND_16_TO_16(job.h_line_16_buf, job.h_line_buf, width, scale);
-                        memcpy(dest_row_16, job.h_line_buf, scaled_w * sizeof(uint16_t));
-                    } else {
-                        EXPAND_16_TO_16(src_row_16, job.h_line_buf, width, scale);
-                        memcpy(dest_row_16, job.h_line_buf, scaled_w * sizeof(uint16_t));
-                    }
-                }
-            }
-        });
-    }
     
     for (auto &th : threads) {
         if (th.joinable()) {
