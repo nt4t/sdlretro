@@ -523,9 +523,9 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
             __m128i g8_1 = _mm_and_si128(_mm_srli_epi32(v1, 8), mask8);
             __m128i b8_1 = _mm_and_si128(v1, mask8);
             
-            __m128i r5_0 = _mm_srli_epi16(_mm_packus_epi32(r8_0, r8_1), 0);
-            __m128i g5_0 = _mm_srli_epi16(_mm_packus_epi32(g8_0, g8_1), 0);
-            __m128i b5_0 = _mm_srli_epi16(_mm_packus_epi32(b8_0, b8_1), 0);
+            __m128i r5_0 = _mm_srli_epi16(_mm_packs_epi32(r8_0, r8_1), 0);
+            __m128i g5_0 = _mm_srli_epi16(_mm_packs_epi32(g8_0, g8_1), 0);
+            __m128i b5_0 = _mm_srli_epi16(_mm_packs_epi32(b8_0, b8_1), 0);
             
             __m128i r5s_0 = _mm_slli_epi16(_mm_srli_epi16(r5_0, 3), 11);
             __m128i g5s_0 = _mm_slli_epi16(_mm_srli_epi16(g5_0, 2), 5);
