@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/msync.h>
 #include <linux/fb.h>
 #include <linux/input.h>
 #include <dirent.h>
@@ -44,14 +45,44 @@ fbdev_impl::fbdev_impl() {
     }
     
     size_t fb_size = finfo.smem_len;
-    void *fb_ptr = mmap(NULL, fb_size, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, 0);
+    
+    void *fb_ptr = nullptr;
+    int mmap_flags = MAP_SHARED;
+    fb_ptr = mmap(NULL, fb_size, PROT_READ | PROT_WRITE, mmap_flags, fb_fd, 0);
+#ifdef MAP_WRITECOMBINE
+    if (fb_ptr == MAP_FAILED) {
+        mmap_flags = MAP_SHARED | MAP_WRITECOMBINE;
+        fb_ptr = mmap(NULL, fb_size, PROT_READ | PROT_WRITE, mmap_flags, fb_fd, 0);
+        if (fb_ptr == MAP_FAILED) {
+            mmap_flags = MAP_SHARED;
+            fb_ptr = mmap(NULL, fb_size, PROT_READ | PROT_WRITE, mmap_flags, fb_fd, 0);
+        }
+    }
+#endif
     if (fb_ptr == MAP_FAILED) {
         fprintf(stderr, "fbdev: Failed to mmap: %m\n");
         close(fb_fd);
         return;
     }
     
-    video = std::make_shared<fbdev_video>(fb_fd, fb_ptr, fb_size, vinfo, finfo);
+#ifdef MAP_WRITECOMBINE
+    if (mmap_flags & MAP_WRITECOMBINE) {
+        LOG(INFO, "fbdev: Using write-combining mmap");
+    } else {
+        LOG(INFO, "fbdev: mmap (no WC support)");
+    }
+#else
+    LOG(INFO, "fbdev: mmap (WC not available)");
+#endif
+    
+    madvise(fb_ptr, fb_size, MADV_SEQUENTIAL);
+    
+    struct ioc_fb_clean_cache ioc_clean = {};
+    if (ioctl(fb_fd, IOC_FB_CLEAN_CACHE, &ioc_clean) == 0) {
+        LOG(INFO, "fbdev: Cache cleaned via IOC_FB_CLEAN_CACHE");
+    }
+    
+    video = std::make_shared<fbdev_video>(fb_fd, fb_ptr, fb_size, vinfo, finfo, mmap_flags);
     input = std::make_shared<fbdev_input>();
     audio = std::make_shared<fbdev_audio>();
     input->post_init();

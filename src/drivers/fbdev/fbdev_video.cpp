@@ -1,5 +1,7 @@
 #include "fbdev_video.h"
 
+#include <sys/mman.h>
+
 #include <cfg.h>
 #include "bmfont.inl"
 #include <logger.h>
@@ -16,8 +18,8 @@ inline const font_data_t &get_pixel_font_data(uint8_t c) {
     return font_big_data[c];
 }
 
-fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo)
-    : fb_fd(fb_fd), fb_ptr(fb_ptr), fb_size(fb_size),
+fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo, int mmap_flags)
+    : fb_fd(fb_fd), fb_ptr(fb_ptr), fb_size(fb_size), mmap_flags(mmap_flags),
       fb_width(vinfo.xres), fb_height(vinfo.yres),
       fb_bpp(vinfo.bits_per_pixel), fb_pitch(finfo.line_length) {
     g_cfg.get_resolution(output_width, output_height);
@@ -855,8 +857,11 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         }
     }
     
-    if (fb_double_buffering && fb_back_buffer) {
+   if (fb_double_buffering && fb_back_buffer) {
         memcpy(fb_ptr, fb_back_buffer, fb_back_size);
+    }
+    if (mmap_flags & MAP_WRITECOMBINE) {
+        msync(fb_ptr, fb_size, MS_ASYNC);
     }
 }
 
@@ -928,8 +933,11 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
         }
     }
     
-    if (fb_double_buffering && fb_back_buffer) {
+  if (fb_double_buffering && fb_back_buffer) {
         memcpy(fb_ptr, fb_back_buffer, fb_back_size);
+    }
+    if (mmap_flags & MAP_WRITECOMBINE) {
+        msync(fb_ptr, fb_size, MS_ASYNC);
     }
 }
 

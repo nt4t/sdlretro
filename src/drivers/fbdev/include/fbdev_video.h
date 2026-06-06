@@ -11,7 +11,7 @@ namespace drivers {
 
 class fbdev_video: public video_base {
 public:
-    fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo);
+    fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo, int mmap_flags = 0);
     ~fbdev_video() override;
 
     void window_resized(int width, int height, bool fullscreen) override;
@@ -48,6 +48,7 @@ private:
     int fb_fd = -1;
     void *fb_ptr = nullptr;
     size_t fb_size = 0;
+    int mmap_flags = 0;
     
     int fb_width = 0;
     int fb_height = 0;
