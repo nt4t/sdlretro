@@ -694,15 +694,20 @@ inline void expand_16_to_32_sse2(const uint16_t *src, uint32_t *dst, int width, 
             hi = _mm_or_si128(hi, _mm_unpackhi_epi16(b8, b8));
             loh = _mm_or_si128(loh, _mm_unpacklo_epi16(b8h, b8h));
             hih = _mm_or_si128(hih, _mm_unpackhi_epi16(b8h, b8h));
+            
+            uint32_t lo_arr[4], loh_arr[4];
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(lo_arr), lo);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(loh_arr), loh);
+            
             for (int s = 0; s < scale; s++) {
-                dst[(i + 0) * scale + s] = _mm_extract_epi32(lo, 0);
-                dst[(i + 1) * scale + s] = _mm_extract_epi32(lo, 1);
-                dst[(i + 2) * scale + s] = _mm_extract_epi32(lo, 2);
-                dst[(i + 3) * scale + s] = _mm_extract_epi32(lo, 3);
-                dst[(i + 4) * scale + s] = _mm_extract_epi32(loh, 0);
-                dst[(i + 5) * scale + s] = _mm_extract_epi32(loh, 1);
-                dst[(i + 6) * scale + s] = _mm_extract_epi32(loh, 2);
-                dst[(i + 7) * scale + s] = _mm_extract_epi32(loh, 3);
+                dst[(i + 0) * scale + s] = lo_arr[0];
+                dst[(i + 1) * scale + s] = lo_arr[1];
+                dst[(i + 2) * scale + s] = lo_arr[2];
+                dst[(i + 3) * scale + s] = lo_arr[3];
+                dst[(i + 4) * scale + s] = loh_arr[0];
+                dst[(i + 5) * scale + s] = loh_arr[1];
+                dst[(i + 6) * scale + s] = loh_arr[2];
+                dst[(i + 7) * scale + s] = loh_arr[3];
             }
             i += 8;
         }
