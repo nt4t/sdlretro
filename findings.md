@@ -1,32 +1,68 @@
-# Findings: FBDEV Render Optimization
+# Task Plan: Improved ZIP ROM Loading
 
-## Current Render Paths
+## Goal
+Improve ZIP ROM loading in main.cpp with better file selection and streaming extraction.
 
-### render_1to1
-- **32->32**: Already uses direct pixel copy (fast)
-- **16->32**: Per-pixel RGB1555->XRGB8888 conversion (slow, no SIMD)
-- **32->16**: Calls `convert_xrgb8888_to_rgb565` per row (SIMD-accelerated: AArch64 NEON 8px/cycle, SSE2 8px/cycle)
-- **16->16**: Already uses `memcpy` (fast)
+## Current State
+- `main.cpp:155-182` — miniz extracts first non-text file from ZIP
+- Loads entire ZIP into memory
+- Skips `.txt` files, picks first other file
+- No intelligent file selection
 
-### render_scaled
-- **32->32**: SIMD horizontal expansion (AArch64 NEON 4px/cycle, SSE2 4px/cycle)
-- **16->32**: SIMD conversion + expansion (AArch64 NEON 8px/cycle bulk, SSE2 8px/cycle bulk)
-- **32->16**: `convert_xrgb8888_to_rgb565` + SIMD horizontal expansion (AArch64 NEON 8px/cycle + 4px/cycle, SSE2 8px/cycle + 4px/cycle)
-- **16->16**: SIMD horizontal expansion (AArch64 NEON 4px/cycle, SSE2 8px/cycle)
+## Design (Approved)
 
-## Key Discovered Issues
-1. `convert_xrgb8888_to_rgb565` had a LOG(INFO) call inside the loop for 0xBDBEBD - removed
-2. All scaling paths used per-pixel inner loops instead of word-sized fills - replaced with SIMD
-3. No SIMD acceleration on any path - now AArch64 NEON + SSE2
-4. ARMv7 NEON intrinsics non-standard on target toolchain (vld1_u32 returns uint32x2_t, vshrq_n_u32 type mismatches) - falls back to scalar
+### 1. Better File Selection
+- Scan all ZIP entries, rank by priority
+- Priority 1: `.bin`, `.img`, `.iso`, `.rom`, `.nes`, `.sfc`, `.gba`, `.md`, `.sg`, `.z64`, `.n64`, `.gg`, `.sms`, `.nds`, `.nds.gz`
+- Priority 2: Any non-text file
+- Skip: `.txt`, `.nfo`, `.info`, `.pdf`, `.html`, `.htm`, `.xml`, `.json`, `.cfg`, `.ini`
 
-## Platform Considerations
-- AArch64: NEON intrinsics process 8x 32-bit or 8x 16-bit values in parallel (standard)
-- x86: SSE2 processes 4x 32-bit or 8x 16-bit values in parallel
-- ARMv7: NEON intrinsics non-standard on some toolchains, scalar fallback
-- Detection: use `__ARM_NEON` + `__aarch64__` for AArch64, `__SSE2__` for x86
+### 2. Streaming Extraction
+- Use miniz streaming API
+- Check file size before extracting (skip >256MB)
+- Don't load entire ZIP into memory upfront
 
-## Reference Implementations
-- SDL2's pixel conversion uses SIMD when available
-- Linux kernel framebuffer drivers use optimized copy routines
-- Simple NEON 8->5 conversion: shift+mask with VSHRN
+### 3. Implementation Location
+- Keep in `main.cpp`, replace existing `155-182` block
+- Extract helper functions: `find_best_rom_entry()`, `extract_zip_entry()`
+
+### 4. Constraints
+- No new dependencies (still uses miniz)
+- fbdev driver unchanged
+- Backward compatible
+
+## Phases
+
+### Phase 1: File Selection Helper (Low Risk) - DONE
+- [x] Create `find_best_rom_entry()` function
+- [x] Define ROM extension priority list
+- [x] Define skip extension list
+- [x] Scan ZIP entries and return best match
+
+### Phase 2: Streaming Extraction (Low Risk) - DONE
+- [x] Create `extract_zip_entry()` function
+- [x] Use miniz streaming extraction (`mz_zip_reader_extract_to_heap`)
+- [x] Add file size check (>256MB skip)
+- [x] Replace inline ZIP code in main.cpp
+
+### Phase 3: Integration & Testing
+- [x] Wire up new functions in main.cpp
+- [ ] Test with single-file ZIP
+- [ ] Test with multi-file ZIP
+- [ ] Test with large ZIP (>256MB should skip)
+
+## Decisions
+- Keep in main.cpp (user preference)
+- ZIP only (no 7z/RAR/TAR.GZ)
+- Pick first non-text file with better filtering
+- Streaming extraction for memory efficiency
+
+## Errors Encountered
+| Error | Attempt | Resolution |
+|-------|---------|------------|
+| Segfault when loading ZIP ROM | — | `extract_zip_entry()` resizes `unzipped_data` then fails, leaving zero-filled data; now check return value before calling `load_game_from_mem()` |
+
+## Phase Status
+- [x] Phase 1: File Selection Helper
+- [x] Phase 2: Streaming Extraction
+- [ ] Phase 3: Integration & Testing (code wired, needs testing)

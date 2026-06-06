@@ -19,14 +19,106 @@
 
 #include <cstdio>
 #include <cstring>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <cstdlib>
 
 #include <getopt.h>
+
+static const char* ROM_EXTENSIONS[] = {
+    "bin", "img", "iso", "rom",
+    "nes", "sfc", "smc", "gba", "gb",
+    "md", "sg", "smd", "sms", "gg",
+    "z64", "n64", "v64",
+    "nds", "nds.gz",
+    "pce", "ngc", "ngp",
+    "ws", "wsc",
+    "pcfx", "sc", "chd",
+    nullptr
+};
+
+static const char* SKIP_EXTENSIONS[] = {
+    "txt", "nfo", "info", "pdf",
+    "html", "htm", "xml", "json",
+    "cfg", "ini", "log", "md",
+    "rtf", "csv", "doc",
+    nullptr
+};
+
+static std::string to_lower(const std::string& s) {
+    std::string result = s;
+    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
+}
+
+static bool is_skip_extension(const std::string& ext) {
+    std::string lower_ext = to_lower(ext);
+    for (int i = 0; SKIP_EXTENSIONS[i] != nullptr; i++) {
+        if (lower_ext == SKIP_EXTENSIONS[i]) return true;
+    }
+    return false;
+}
+
+static bool is_rom_extension(const std::string& ext) {
+    std::string lower_ext = to_lower(ext);
+    for (int i = 0; ROM_EXTENSIONS[i] != nullptr; i++) {
+        if (lower_ext == ROM_EXTENSIONS[i]) return true;
+    }
+    return false;
+}
+
+static int find_best_rom_entry(mz_zip_archive* pZip) {
+    mz_uint num_files = mz_zip_reader_get_num_files(pZip);
+    int best_idx = -1;
+    int best_priority = -1;
+    
+    for (mz_uint i = 0; i < num_files; i++) {
+        mz_zip_archive_file_stat file_stat;
+        if (!mz_zip_reader_file_stat(pZip, i, &file_stat)) continue;
+        
+        const char* ext_ptr = strrchr(file_stat.m_filename, '.');
+        if (ext_ptr == nullptr) continue;
+        
+        std::string ext = ext_ptr + 1;
+        
+        if (is_skip_extension(ext)) continue;
+        
+        int priority = is_rom_extension(ext) ? 1 : 0;
+        
+        if (priority > best_priority) {
+            best_priority = priority;
+            best_idx = (int)i;
+        }
+    }
+    
+    return best_idx;
+}
+
+static bool extract_zip_entry(mz_zip_archive* pZip, int file_index, std::vector<uint8_t>& out_data) {
+    mz_zip_archive_file_stat file_stat;
+    if (!mz_zip_reader_file_stat(pZip, file_index, &file_stat)) return false;
+    
+    if (file_stat.m_uncomp_size > 256 * 1024 * 1024) {
+        LOG(WARNING, "Skipping file >256MB: {}", file_stat.m_filename);
+        return false;
+    }
+    
+    out_data.resize(file_stat.m_uncomp_size);
+    void* p = mz_zip_reader_extract_to_heap(pZip, file_index, nullptr, 0);
+    if (p != nullptr) {
+        memcpy(&out_data[0], p, file_stat.m_uncomp_size);
+        mz_free(p);
+        return true;
+    }
+    
+    return false;
+}
 
 #define DEFAULT_DATA_DIR "."
 #ifdef GCW_ZERO
 #define DEFAULT_STORE_DIR "/usr/local/home/.sdlretro"
 #elif defined(__linux__) || defined(__unix__)
-#include <cstdlib>
 static std::string get_default_store_dir() {
     const char *home = getenv("HOME");
     if (home) {
@@ -153,32 +245,33 @@ int program(int argc, char *argv[]) {
 
         std::vector<const libretro::core_info *> core_list;
         if (strcasecmp(ptr, ".zip") == 0) {
-            do {
-                mz_zip_archive arc = {};
-                if (!mz_zip_reader_init_file(&arc, rom_filename, 0)) break;
-                auto num_files = mz_zip_reader_get_num_files(&arc);
-                if (num_files == 0) {
-                    LOG(ERROR, "Empty zip file!");
+            mz_zip_archive arc = {};
+            if (!mz_zip_reader_init_file(&arc, rom_filename, 0)) {
+                LOG(ERROR, "Failed to open ZIP file!");
+                return 1;
+            }
+            
+            int best_idx = find_best_rom_entry(&arc);
+            if (best_idx < 0) {
+                LOG(ERROR, "No valid ROM file found in ZIP!");
+                mz_zip_reader_end(&arc);
+                return 1;
+            }
+            
+            mz_zip_archive_file_stat file_stat;
+            mz_zip_reader_file_stat(&arc, best_idx, &file_stat);
+            rom_ext = strrchr(file_stat.m_filename, '.') + 1;
+            core_list = coreman.match_cores_by_extension(rom_ext);
+            
+            if (!core_list.empty()) {
+                if (!extract_zip_entry(&arc, best_idx, unzipped_data)) {
+                    LOG(ERROR, "Failed to extract ROM from ZIP!");
                     mz_zip_reader_end(&arc);
                     return 1;
                 }
-                if (num_files > 2)
-                    break;
-                for (uint32_t i = 0; i < num_files; ++i) {
-                    mz_zip_archive_file_stat file_stat;
-                    mz_zip_reader_file_stat(&arc, 0, &file_stat);
-                    const char *ext_ptr = strrchr(file_stat.m_filename, '.');
-                    if (ext_ptr == nullptr || strcasecmp(ext_ptr, ".txt") == 0) continue;
-                    rom_ext = ext_ptr + 1;
-                    core_list = coreman.match_cores_by_extension(rom_ext);
-                    if (!core_list.empty()) {
-                        unzipped_data.resize(file_stat.m_uncomp_size);
-                        mz_zip_reader_extract_to_mem(&arc, 0, &unzipped_data[0], file_stat.m_uncomp_size, 0);
-                        break;
-                    }
-                }
-                mz_zip_reader_end(&arc);
-            } while (false);
+            }
+            
+            mz_zip_reader_end(&arc);
         }
         if (core_list.empty()) {
             rom_ext = ptr + 1;
