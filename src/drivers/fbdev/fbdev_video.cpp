@@ -28,6 +28,7 @@ fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_
     drawn = false;
     frame_count = 0;
     last_fps_time = 0;
+    fb_double_buffering = true;
     
     memset(fb_ptr, 0, fb_size);
     LOG(INFO, "fbdev_video: {}x{}, {}bpp, pitch={}, line_length={}", fb_width, fb_height, fb_bpp, fb_pitch, finfo.line_length);
@@ -50,6 +51,7 @@ fbdev_video::~fbdev_video() {
     delete[] h_line_16;
     delete[] h_line_32;
     delete[] static_cast<uint8_t*>(game_frame_buffer);
+    delete[] static_cast<uint8_t*>(fb_back_buffer);
 }
 
 void fbdev_video::window_resized(int width, int height, bool fullscreen) {
@@ -81,11 +83,16 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
     }
     
      size_t max_line_pixels = static_cast<size_t>(width) * scale;
+    size_t h_line_bytes_16 = max_line_pixels * sizeof(uint16_t);
+    size_t h_line_bytes_32 = max_line_pixels * sizeof(uint32_t);
+    
     if (max_line_pixels > h_line_size) {
         delete[] h_line_16;
         delete[] h_line_32;
-        h_line_16 = new uint16_t[max_line_pixels];
-        h_line_32 = new uint32_t[max_line_pixels];
+        h_line_16 = static_cast<uint16_t*>(aligned_alloc(64, h_line_bytes_16 + 64));
+        h_line_32 = static_cast<uint32_t*>(aligned_alloc(64, h_line_bytes_32 + 64));
+        if (h_line_16) h_line_16 = (uint16_t*)(((uintptr_t)h_line_16 + 63) & ~63);
+        if (h_line_32) h_line_32 = (uint32_t*)(((uintptr_t)h_line_32 + 63) & ~63);
         h_line_size = max_line_pixels;
     }
     
@@ -94,6 +101,20 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
         delete[] static_cast<uint8_t*>(game_frame_buffer);
         game_frame_buffer = new uint8_t[new_frame_size];
         game_frame_size = new_frame_size;
+    }
+    
+    if (fb_double_buffering && fb_back_buffer == nullptr) {
+        size_t back_size = fb_width * fb_height * (fb_bpp == 32 ? 4 : 2);
+        fb_back_buffer = aligned_alloc(64, back_size + 64);
+        if (fb_back_buffer) fb_back_buffer = (void*)(((uintptr_t)fb_back_buffer + 63) & ~63);
+        fb_back_size = back_size;
+        if (fb_back_buffer) {
+            memset(fb_back_buffer, 0, back_size);
+            LOG(INFO, "Double buffering enabled: {} bytes", back_size);
+        } else {
+            LOG(INFO, "Double buffering: aligned_alloc failed, using single buffer");
+            fb_double_buffering = false;
+        }
     }
     
     if (!pixel_format_logged) {
@@ -516,12 +537,10 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         dst[i] = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
     }
 #endif
-}
 
 #if defined(__ARM_NEON) && defined(__aarch64__)
 inline void expand_32_to_32_neon_a64(const uint32_t *src, uint32_t *dst, int width, int scale) {
-    int i = 0;
-    for (; i < width; i++) {
+    for (int i = 0; i < width; i++) {
         uint32_t p = src[i];
         uint32x4_t v = vdupq_n_u32(p);
         int j = 0;
@@ -582,8 +601,7 @@ inline void expand_16_to_32_neon_a64(const uint16_t *src, uint32_t *dst, int wid
 }
 
 inline void expand_32_to_16_neon_a64(const uint32_t *src, uint16_t *dst, int width, int scale) {
-    int i = 0;
-    for (; i < width; i++) {
+    for (int i = 0; i < width; i++) {
         uint32_t p = src[i];
         uint8_t r8 = (p >> 16) & 0xFF;
         uint8_t g8 = (p >> 8) & 0xFF;
@@ -601,105 +619,12 @@ inline void expand_32_to_16_neon_a64(const uint32_t *src, uint16_t *dst, int wid
 }
 
 inline void expand_16_to_16_neon_a64(const uint16_t *src, uint16_t *dst, int width, int scale) {
-    int i = 0;
-    for (; i < width; i++) {
+    for (int i = 0; i < width; i++) {
         uint16_t pix = src[i];
         uint16x4_t v = vdupq_n_u16(pix);
         int j = 0;
         for (; j < scale - 3; j += 4) {
             vst1q_u16(dst + i * scale + j, v);
-        }
-        for (; j < scale; j++) {
-            dst[i * scale + j] = pix;
-        }
-    }
-}
-#elif defined(__ARM_NEON) && defined(__arm__)
-inline void expand_32_to_32_neon_arm32(const uint32_t *src, uint32_t *dst, int width, int scale) {
-    int i = 0;
-    for (; i < width; i++) {
-        uint32_t p = src[i];
-        uint32x2_t v = vdup_n_u32(p);
-        int j = 0;
-        for (; j < scale - 1; j += 2) {
-            vst1_u32(dst + i * scale + j, v);
-        }
-        for (; j < scale; j++) {
-            dst[i * scale + j] = p;
-        }
-    }
-}
-
-inline void expand_16_to_32_neon_arm32(const uint16_t *src, uint32_t *dst, int width, int scale) {
-    int i = 0;
-    int bulk = width & ~3;
-    if (bulk > 0) {
-        while (i < bulk) {
-            uint16x4_t p16 = vld1_u16(src + i);
-            uint32x2_t lo = vmovl_u16(vget_low_u16(p16));
-            uint32x2_t hi = vmovl_u16(vget_high_u16(p16));
-            uint32x2_t r8 = vshrq_n_u32(lo, 16);
-            uint32x2_t g8 = vshrq_n_u32(lo, 8);
-            uint32x2_t b8 = vmovn_u32(lo);
-            uint32x2_t r8h = vshrq_n_u32(hi, 16);
-            uint32x2_t g8h = vshrq_n_u32(hi, 8);
-            uint32x2_t b8h = vmovn_u32(hi);
-            uint32x2_t r5 = vshrq_n_u32(r8, 3);
-            uint32x2_t g6 = vshrq_n_u32(g8, 2);
-            uint32x2_t r5h = vshrq_n_u32(r8h, 3);
-            uint32x2_t g6h = vshrq_n_u32(g8h, 2);
-            uint32x2_t lo32 = vorr_u32(vshl_n_u32(r5, 11), vshl_n_u32(g6, 5));
-            uint32x2_t hi32 = vorr_u32(vshl_n_u32(r5h, 11), vshl_n_u32(g6h, 5));
-            lo32 = vorr_u32(lo32, b8);
-            hi32 = vorr_u32(hi32, b8h);
-            for (int s = 0; s < scale; s++) {
-                dst[(i + 0) * scale + s] = vget_lane_u32(lo32, 0);
-                dst[(i + 1) * scale + s] = vget_lane_u32(lo32, 1);
-                dst[(i + 2) * scale + s] = vget_lane_u32(hi32, 0);
-                dst[(i + 3) * scale + s] = vget_lane_u32(hi32, 1);
-            }
-            i += 4;
-        }
-    }
-    for (; i < width; i++) {
-        uint16_t p16 = src[i];
-        uint16_t r = (p16 >> 10) & 0x1F;
-        uint16_t g = (p16 >> 5) & 0x1F;
-        uint16_t b = p16 & 0x1F;
-        uint32_t p32 = (r << 19) | (g << 14) | (b << 9) | 0x80000000u;
-        for (int s = 0; s < scale; s++) {
-            dst[i * scale + s] = p32;
-        }
-    }
-}
-
-inline void expand_32_to_16_neon_arm32(const uint32_t *src, uint16_t *dst, int width, int scale) {
-    int i = 0;
-    for (; i < width; i++) {
-        uint32_t p = src[i];
-        uint8_t r8 = (p >> 16) & 0xFF;
-        uint8_t g8 = (p >> 8) & 0xFF;
-        uint8_t b8 = p & 0xFF;
-        uint16_t pix = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
-        uint16x4_t v = vdup_n_u16(pix);
-        int j = 0;
-        for (; j < scale - 1; j += 2) {
-            vst1_u16(dst + i * scale + j, v);
-        }
-        for (; j < scale; j++) {
-            dst[i * scale + j] = pix;
-        }
-    }
-}
-
-inline void expand_16_to_16_neon_arm32(const uint16_t *src, uint16_t *dst, int width, int scale) {
-    int i = 0;
-    for (; i < width; i++) {
-        uint16_t pix = src[i];
-        uint16x4_t v = vdup_n_u16(pix);
-        int j = 0;
-        for (; j < scale - 1; j += 2) {
-            vst1_u16(dst + i * scale + j, v);
         }
         for (; j < scale; j++) {
             dst[i * scale + j] = pix;
@@ -857,11 +782,6 @@ inline void expand_16_to_16_scalar(const uint16_t *src, uint16_t *dst, int width
 #define EXPAND_16_TO_32 expand_16_to_32_neon_a64
 #define EXPAND_32_TO_16 expand_32_to_16_neon_a64
 #define EXPAND_16_TO_16 expand_16_to_16_neon_a64
-#elif defined(__ARM_NEON) && defined(__arm__)
-#define EXPAND_32_TO_32 expand_32_to_32_neon_arm32
-#define EXPAND_16_TO_32 expand_16_to_32_neon_arm32
-#define EXPAND_32_TO_16 expand_32_to_16_neon_arm32
-#define EXPAND_16_TO_16 expand_16_to_16_neon_arm32
 #elif defined(__SSE2__)
 #define EXPAND_32_TO_32 expand_32_to_32_sse2
 #define EXPAND_16_TO_32 expand_16_to_32_sse2
@@ -885,15 +805,18 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         input_bpp = (game_pixel_format == 1) ? 32 : 16;
     }
     
+    void *target = fb_ptr;
+    if (fb_double_buffering && fb_back_buffer) {
+        target = fb_back_buffer;
+    }
+    
     if (fb_bpp == 32) {
-        uint32_t *dest_row = static_cast<uint32_t*>(fb_ptr) + offset_y * fb_pitch_pixels + offset_x;
+        uint32_t *dest_row = static_cast<uint32_t*>(target) + offset_y * fb_pitch_pixels + offset_x;
         
         if (input_bpp == 32) {
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
             for (int h = 0; h < height; h++) {
-                for (int x = 0; x < width; x++) {
-                    dest_row[x] = src_row[x];
-                }
+                memcpy(dest_row + offset_x, src_row, width * sizeof(uint32_t));
                 src_row += pitch / sizeof(uint32_t);
                 dest_row += fb_pitch_pixels;
             }
@@ -912,7 +835,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             }
         }
     } else {
-        uint16_t *dest_row = static_cast<uint16_t*>(fb_ptr) + offset_y * fb_pitch_pixels + offset_x;
+        uint16_t *dest_row = static_cast<uint16_t*>(target) + offset_y * fb_pitch_pixels + offset_x;
         
         if (input_bpp == 32) {
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
@@ -924,11 +847,15 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint16_t *src_row = static_cast<const uint16_t*>(data);
             for (int h = 0; h < height; h++) {
-                memcpy(dest_row, src_row, width * sizeof(uint16_t));
+                memcpy(dest_row + offset_x, src_row, width * sizeof(uint16_t));
                 src_row += pitch / sizeof(uint16_t);
                 dest_row += fb_pitch_pixels;
             }
         }
+    }
+    
+    if (fb_double_buffering && fb_back_buffer) {
+        memcpy(fb_ptr, fb_back_buffer, fb_back_size);
     }
 }
 
@@ -944,8 +871,13 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
     }
     size_t fb_pitch_pixels = fb_pitch / (fb_bpp / 8);
     
+    void *target = fb_ptr;
+    if (fb_double_buffering && fb_back_buffer) {
+        target = fb_back_buffer;
+    }
+    
     if (fb_bpp == 32) {
-        uint32_t *dest_row = static_cast<uint32_t*>(fb_ptr) + offset_y * fb_pitch_pixels + offset_x;
+        uint32_t *dest_row = static_cast<uint32_t*>(target) + offset_y * fb_pitch_pixels + offset_x;
         
         if (input_bpp == 32) {
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
@@ -969,15 +901,15 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
             }
         }
     } else {
-        uint16_t *dest_row = static_cast<uint16_t*>(fb_ptr) + offset_y * fb_pitch_pixels + offset_x;
+        uint16_t *dest_row = static_cast<uint16_t*>(target) + offset_y * fb_pitch_pixels + offset_x;
         
         if (input_bpp == 32) {
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
             for (int y = 0; y < height; y++) {
                 convert_xrgb8888_to_rgb565(src_row, this->h_line_16, width);
-                EXPAND_16_TO_16(this->h_line_16, this->h_line_16, width, scale);
+                EXPAND_16_TO_16(this->h_line_16, reinterpret_cast<uint16_t*>(this->h_line_32), width, scale);
                 for (int sy = 0; sy < scale; sy++) {
-                    memcpy(dest_row, this->h_line_16, scaled_w * sizeof(uint16_t));
+                    memcpy(dest_row, reinterpret_cast<uint16_t*>(this->h_line_32), scaled_w * sizeof(uint16_t));
                     dest_row += fb_pitch_pixels;
                 }
                 src_row += pitch / sizeof(uint32_t);
@@ -993,6 +925,10 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
                 src_row += pitch / sizeof(uint16_t);
             }
         }
+    }
+    
+    if (fb_double_buffering && fb_back_buffer) {
+        memcpy(fb_ptr, fb_back_buffer, fb_back_size);
     }
 }
 

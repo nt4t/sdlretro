@@ -72,6 +72,10 @@ private:
     void *game_frame_buffer = nullptr;
     size_t game_frame_size = 0;
     
+    void *fb_back_buffer = nullptr;
+    size_t fb_back_size = 0;
+    bool fb_double_buffering = false;
+    
     bool drawn = false;
     bool fps_enabled = false;
     bool render_log_enabled = false;

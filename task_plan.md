@@ -33,11 +33,11 @@ Optimize fbdev framebuffer rendering performance for smoother gameplay.
 - [x] ARMv7 NEON: removed (non-standard intrinsics on target toolchain), falls back to scalar
 - [x] Scalar fallback for all platforms
 
-### Phase 4: Memory Layout (Medium Impact) - NEXT
-- [ ] Eliminate intermediate h_line buffers for 1:1 rendering
-- [ ] Use double-buffering to avoid framebuffer flicker
-- [ ] Align allocations to cache line boundaries (64 bytes)
-- [ ] Consider using `__attribute__((aligned(64)))` for h_line_16/h_line_32
+### Phase 4: Memory Layout (Medium Impact) - DONE
+- [x] Double-buffering to avoid framebuffer flicker (fb_back_buffer with aligned_alloc)
+- [x] Align allocations to cache line boundaries (64 bytes) for h_line_16/h_line_32
+- [x] render_1to1: use memcpy for 32->32 (was per-pixel loop)
+- [x] render_scaled: fix 32->16 in-place expansion bug (expand to separate h_line_32 buffer)
 
 ### Phase 5: Advanced (Low Impact, High Risk)
 - [ ] MMAP with write-combining / uncached memory
