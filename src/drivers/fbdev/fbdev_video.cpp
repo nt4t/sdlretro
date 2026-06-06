@@ -860,9 +860,11 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
    if (fb_double_buffering && fb_back_buffer) {
         memcpy(fb_ptr, fb_back_buffer, fb_back_size);
     }
+#ifdef MAP_WRITECOMBINE
     if (mmap_flags & MAP_WRITECOMBINE) {
         msync(fb_ptr, fb_size, MS_ASYNC);
     }
+#endif
 }
 
 void fbdev_video::render_scaled(const void *data, int width, int height, size_t pitch) {
@@ -936,9 +938,11 @@ void fbdev_video::render_scaled(const void *data, int width, int height, size_t 
   if (fb_double_buffering && fb_back_buffer) {
         memcpy(fb_ptr, fb_back_buffer, fb_back_size);
     }
+#ifdef MAP_WRITECOMBINE
     if (mmap_flags & MAP_WRITECOMBINE) {
         msync(fb_ptr, fb_size, MS_ASYNC);
     }
+#endif
 }
 
 }
