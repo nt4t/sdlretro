@@ -136,6 +136,12 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
         LOG(INFO, "fb_pixel_fmt: r={}/{} g={}/{} b={}/{}", fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
         pixel_format_logged = true;
     }
+    static bool first_frame_logged = false;
+    if (!first_frame_logged && width > 0 && height > 0 && data) {
+        uint16_t *d16 = static_cast<uint16_t*>(const_cast<void*>(data));
+        LOG(INFO, "fb: first pixel={:#06x} fmt={}", d16[0], pixel_format);
+        first_frame_logged = true;
+    }
     LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
         width, height, max_width, max_height, pixel_format, scale, output_width, output_height);
     
@@ -823,6 +829,18 @@ static inline uint16_t convert_bgr565_to_fb(uint16_t p, int fb_r_shift, int fb_r
     uint16_t b = (p >> 11) & 0x1F;
     uint16_t g = (p >> 5) & 0x3F;
     uint16_t r = p & 0x1F;
+    
+    uint16_t out = 0;
+    out |= (r << fb_r_shift);
+    out |= (g << fb_g_shift);
+    out |= (b << fb_b_shift);
+    return out;
+}
+
+static inline uint16_t convert_xrgb1555_to_fb(uint16_t p, int fb_r_shift, int fb_r_len, int fb_g_shift, int fb_g_len, int fb_b_shift, int fb_b_len) {
+    uint16_t r = (p >> 10) & 0x1F;
+    uint16_t g = (p >> 5) & 0x1F;
+    uint16_t b = p & 0x1F;
     
     uint16_t out = 0;
     out |= (r << fb_r_shift);
