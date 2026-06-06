@@ -512,24 +512,29 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         __m128i mask8 = _mm_set1_epi32(0xFF);
         
         while (i < bulk) {
-            __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + i));
+            __m128i v0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + i));
+            __m128i v1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + i + 4));
             
-            __m128i r8 = _mm_and_si128(_mm_srli_epi32(v, 16), mask8);
-            __m128i g8 = _mm_and_si128(_mm_srli_epi32(v, 8), mask8);
-            __m128i b8 = _mm_and_si128(v, mask8);
+            __m128i r8_0 = _mm_and_si128(_mm_srli_epi32(v0, 16), mask8);
+            __m128i g8_0 = _mm_and_si128(_mm_srli_epi32(v0, 8), mask8);
+            __m128i b8_0 = _mm_and_si128(v0, mask8);
             
-            __m128i r8s = _mm_srai_epi16(_mm_cvtepi32_epi16(r8), 3);
-            __m128i g8s = _mm_srai_epi16(_mm_cvtepi32_epi16(g8), 2);
-            __m128i b8s = _mm_srai_epi16(_mm_cvtepi32_epi16(b8), 3);
+            __m128i r8_1 = _mm_and_si128(_mm_srli_epi32(v1, 16), mask8);
+            __m128i g8_1 = _mm_and_si128(_mm_srli_epi32(v1, 8), mask8);
+            __m128i b8_1 = _mm_and_si128(v1, mask8);
             
-            __m128i r5 = _mm_slli_epi16(r8s, 11);
-            __m128i g5 = _mm_slli_epi16(g8s, 5);
+            __m128i r5_0 = _mm_srli_epi16(_mm_packus_epi32(r8_0, r8_1), 0);
+            __m128i g5_0 = _mm_srli_epi16(_mm_packus_epi32(g8_0, g8_1), 0);
+            __m128i b5_0 = _mm_srli_epi16(_mm_packus_epi32(b8_0, b8_1), 0);
             
-            __m128i lo = _mm_unpacklo_epi16(r5, g5);
-            __m128i hi = _mm_unpackhi_epi16(r5, g5);
+            __m128i r5s_0 = _mm_slli_epi16(_mm_srli_epi16(r5_0, 3), 11);
+            __m128i g5s_0 = _mm_slli_epi16(_mm_srli_epi16(g5_0, 2), 5);
             
-            lo = _mm_or_si128(lo, _mm_unpacklo_epi16(b8s, b8s));
-            hi = _mm_or_si128(hi, _mm_unpackhi_epi16(b8s, b8s));
+            __m128i lo = _mm_unpacklo_epi16(r5s_0, g5s_0);
+            __m128i hi = _mm_unpackhi_epi16(r5s_0, g5s_0);
+            
+            lo = _mm_or_si128(lo, _mm_unpacklo_epi16(b5_0, b5_0));
+            hi = _mm_or_si128(hi, _mm_unpackhi_epi16(b5_0, b5_0));
             
             _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i), lo);
             _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i + 4), hi);
@@ -1058,9 +1063,9 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
                 const uint32_t *src_row_32 = reinterpret_cast<const uint32_t*>(src_data + input_row * pitch);
                 const uint16_t *src_row_16 = reinterpret_cast<const uint16_t*>(src_data + input_row * pitch);
                 
-                uint16_t *dest_base = reinterpret_cast<uint16_t*>(target);
-                uint32_t *dest_row_32 = dest_base + ((offset_y + y) * fb_pitch_pixels + offset_x);
-                uint16_t *dest_row_16 = dest_base + ((offset_y + y) * fb_pitch_pixels + offset_x);
+                uint8_t *dest_base = static_cast<uint8_t*>(target);
+                uint32_t *dest_row_32 = reinterpret_cast<uint32_t*>(dest_base + (offset_y + y) * fb_pitch) + offset_x;
+                uint16_t *dest_row_16 = reinterpret_cast<uint16_t*>(dest_base + (offset_y + y) * fb_pitch) + offset_x;
                 
                 if (fb_bpp == 32) {
                     if (input_bpp == 32) {
