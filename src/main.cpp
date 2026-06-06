@@ -284,6 +284,13 @@ int program(int argc, char *argv[]) {
             int num_files = mz_zip_reader_get_num_files(&arc);
             LOG(INFO, "ZIP: {} files in archive", num_files);
             
+            for (mz_uint i = 0; i < num_files; i++) {
+                mz_zip_archive_file_stat st;
+                if (mz_zip_reader_file_stat(&arc, i, &st)) {
+                    LOG(INFO, "ZIP: entry[{}] = {} ({})", i, st.m_filename, st.m_uncomp_size);
+                }
+            }
+            
             int best_idx = find_best_rom_entry(&arc);
             if (best_idx < 0) {
                 LOG(ERROR, "No valid ROM file found in ZIP!");
