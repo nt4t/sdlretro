@@ -21,7 +21,10 @@ inline const font_data_t &get_pixel_font_data(uint8_t c) {
 fbdev_video::fbdev_video(int fb_fd, void *fb_ptr, size_t fb_size, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo, int mmap_flags)
     : fb_fd(fb_fd), fb_ptr(fb_ptr), fb_size(fb_size), mmap_flags(mmap_flags),
       fb_width(vinfo.xres), fb_height(vinfo.yres),
-      fb_bpp(vinfo.bits_per_pixel), fb_pitch(finfo.line_length) {
+      fb_bpp(vinfo.bits_per_pixel), fb_pitch(finfo.line_length),
+      fb_r_shift(vinfo.red.offset), fb_r_len(vinfo.red.length),
+      fb_g_shift(vinfo.green.offset), fb_g_len(vinfo.green.length),
+      fb_b_shift(vinfo.blue.offset), fb_b_len(vinfo.blue.length) {
     g_cfg.get_resolution(output_width, output_height);
     if (output_width == 0) output_width = fb_width;
     if (output_height == 0) output_height = fb_height;
@@ -130,6 +133,7 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
     
     if (!pixel_format_logged) {
         LOG(INFO, "Core pixel format: {} (RGB1555=0, XRGB8888=1, RGB565=2), fb_bpp={}, pitch={}", pixel_format, fb_bpp, fb_pitch);
+        LOG(INFO, "fb_pixel_fmt: r={}/{} g={}/{} b={}/{}", fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
         pixel_format_logged = true;
     }
     LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
@@ -803,6 +807,22 @@ inline void expand_16_to_16_scalar(const uint16_t *src, uint16_t *dst, int width
 }
 #endif
 
+static inline uint16_t convert_rgb565_to_fb(uint16_t p, int fb_r_shift, int fb_r_len, int fb_g_shift, int fb_g_len, int fb_b_shift, int fb_b_len) {
+    uint8_t r = (p >> 10) & 0x1F;
+    uint8_t g = (p >> 5) & 0x1F;
+    uint8_t b = p & 0x1F;
+    
+    r = (r << 3) | (r >> 2);
+    g = (g << 2) | (g >> 4);
+    b = (b << 3) | (b >> 2);
+    
+    uint16_t out = 0;
+    out |= ((uint16_t)r & ((1 << fb_r_len) - 1)) << fb_r_shift;
+    out |= ((uint16_t)g & ((1 << fb_g_len) - 1)) << fb_g_shift;
+    out |= ((uint16_t)b & ((1 << fb_b_len) - 1)) << fb_b_shift;
+    return out;
+}
+
 #if defined(__ARM_NEON) && defined(__aarch64__)
 #define EXPAND_32_TO_32 expand_32_to_32_neon_a64
 #define EXPAND_16_TO_32 expand_16_to_32_neon_a64
@@ -872,8 +892,15 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             }
         } else {
             const uint16_t *src_row = static_cast<const uint16_t*>(data);
+            bool need_convert = (fb_r_len != 5 || fb_r_shift != 10 || fb_g_len != 6 || fb_g_shift != 5 || fb_b_len != 5 || fb_b_shift != 0);
             for (int h = 0; h < height; h++) {
-                memcpy(dest_row, src_row, width * sizeof(uint16_t));
+                if (need_convert) {
+                    for (int x = 0; x < width; x++) {
+                        dest_row[x] = convert_rgb565_to_fb(src_row[x], fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
+                    }
+                } else {
+                    memcpy(dest_row, src_row, width * sizeof(uint16_t));
+                }
                 src_row += pitch / sizeof(uint16_t);
                 dest_row += fb_pitch_pixels;
             }

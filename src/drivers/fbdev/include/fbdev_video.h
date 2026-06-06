@@ -58,6 +58,12 @@ private:
     int fb_height = 0;
     int fb_bpp = 0;
     size_t fb_pitch = 0;
+    int fb_r_shift = 0;
+    int fb_r_len = 0;
+    int fb_g_shift = 0;
+    int fb_g_len = 0;
+    int fb_b_shift = 0;
+    int fb_b_len = 0;
     
     int game_width = 0;
     int game_height = 0;
