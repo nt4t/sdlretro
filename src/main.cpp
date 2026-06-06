@@ -235,7 +235,7 @@ int program(int argc, char *argv[]) {
 
     std::string rom_ext;
     std::vector<const libretro::core_info *> core_list;
-    std::string extracted_file;
+    std::vector<uint8_t> rom_data;
 
     // ZIP extraction (before core selection, works with or without -L flag)
     const char *ptr = strrchr(rom_filename, '.');
@@ -273,6 +273,19 @@ int program(int argc, char *argv[]) {
         
         core_list = coreman.match_cores_by_extension(rom_ext);
         LOG(INFO, "ZIP: matched {} cores", core_list.size());
+        
+        if (file_stat.m_uncomp_size > 0 && file_stat.m_uncomp_size <= 256 * 1024 * 1024) {
+            rom_data.resize(file_stat.m_uncomp_size);
+            void *extracted = mz_zip_reader_extract_to_mem(&arc, best_idx, 0);
+            if (extracted) {
+                memcpy(rom_data.data(), extracted, file_stat.m_uncomp_size);
+                LOG(INFO, "ZIP: extracted {} bytes to memory", file_stat.m_uncomp_size);
+            } else {
+                LOG(ERROR, "Failed to extract ROM from ZIP to memory!");
+                mz_zip_reader_end(&arc);
+                return 1;
+            }
+        }
         
         mz_zip_reader_end(&arc);
     }
@@ -328,8 +341,13 @@ int program(int argc, char *argv[]) {
         LOG(ERROR, "Unable to load core from '{}'!", core_filepath);
         return 1;
     }
-    LOG(INFO, "Loading game: {} (exists={})", rom_filename, helper::file_exists(rom_filename) ? "yes" : "no");
-    impl->load_game(rom_filename);
+    if (!rom_data.empty()) {
+        LOG(INFO, "Loading game from memory: {} bytes", rom_data.size());
+        impl->load_game_from_mem(rom_filename, rom_ext, rom_data);
+    } else {
+        LOG(INFO, "Loading game: {} (exists={})", rom_filename, helper::file_exists(rom_filename) ? "yes" : "no");
+        impl->load_game(rom_filename);
+    }
     impl->run([&ui] { ui.in_game_menu(); });
     impl->unload_game();
 
