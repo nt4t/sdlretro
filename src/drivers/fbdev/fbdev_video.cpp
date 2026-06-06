@@ -537,6 +537,7 @@ void fbdev_video::convert_xrgb8888_to_rgb565(const uint32_t *src, uint16_t *dst,
         dst[i] = ((r8 >> 3) << 11) | ((g8 >> 2) << 5) | (b8 >> 3);
     }
 #endif
+}
 
 #if defined(__ARM_NEON) && defined(__aarch64__)
 inline void expand_32_to_32_neon_a64(const uint32_t *src, uint32_t *dst, int width, int scale) {
