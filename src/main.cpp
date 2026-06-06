@@ -100,7 +100,7 @@ static bool extract_zip_entry(mz_zip_archive* pZip, int file_index, std::vector<
     if (!mz_zip_reader_file_stat(pZip, file_index, &file_stat)) return false;
     
     if (file_stat.m_uncomp_size > 256 * 1024 * 1024) {
-        LOG(WARNING, "Skipping file >256MB: {}", file_stat.m_filename);
+        LOG(WARN, "Skipping file >256MB: {}", file_stat.m_filename);
         return false;
     }
     
