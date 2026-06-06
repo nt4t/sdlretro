@@ -159,7 +159,7 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
     static bool first_frame_logged = false;
     if (!first_frame_logged && data && width > 0 && height > 0) {
         uint16_t *d16 = static_cast<uint16_t*>(const_cast<void*>(data));
-        LOG(INFO, "fb: first pixel={:#06x} fmt={}", d16[0], pixel_format);
+        LOG(INFO, "fb: first pixel={:#06x} fmt={}", d16[0], game_pixel_format);
         first_frame_logged = true;
     }
     
