@@ -974,7 +974,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             for (int h = 0; h < height; h++) {
                 if (need_convert) {
                     for (int x = 0; x < width; x++) {
-                        dest_row[x] = convert_bgr565_to_fb(src_row[x], fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
+                        dest_row[x] = convert_rgb565_to_fb(src_row[x], fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
                     }
                 } else {
                     memcpy(dest_row, src_row, width * sizeof(uint16_t));
