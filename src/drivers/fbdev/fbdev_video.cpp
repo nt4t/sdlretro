@@ -1076,8 +1076,8 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
                         EXPAND_16_TO_16(j.h_line_16_buf, reinterpret_cast<uint16_t*>(j.h_line_buf), width, scale);
                         memcpy(dest_row_16, reinterpret_cast<uint16_t*>(j.h_line_buf), scaled_w * sizeof(uint16_t));
                     } else {
-                        EXPAND_16_TO_16(src_row_16, j.h_line_buf, width, scale);
-                        memcpy(dest_row_16, j.h_line_buf, scaled_w * sizeof(uint16_t));
+                        EXPAND_16_TO_16(src_row_16, reinterpret_cast<uint16_t*>(j.h_line_buf), width, scale);
+                        memcpy(dest_row_16, reinterpret_cast<uint16_t*>(j.h_line_buf), scaled_w * sizeof(uint16_t));
                     }
                 }
             }
