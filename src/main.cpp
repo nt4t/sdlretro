@@ -236,6 +236,7 @@ int program(int argc, char *argv[]) {
     std::string rom_ext;
 
     std::string core_filepath;
+    LOG(INFO, "core_filename={}", core_filename ? "set" : "null");
     if (core_filename) {
         core_filepath = core_filename;
         if (!helper::file_exists(core_filepath)) {
