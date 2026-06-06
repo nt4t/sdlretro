@@ -5,6 +5,7 @@
 #include <cfg.h>
 #include "bmfont.inl"
 #include <logger.h>
+#include <stb/stb_image_write.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -250,6 +251,56 @@ void *fbdev_video::get_framebuffer(uint32_t *width, uint32_t *height, size_t *pi
 void fbdev_video::get_resolution(int &width, int &height) {
     width = fb_width;
     height = fb_height;
+}
+
+void fbdev_video::save_screenshot() {
+    if (!game_frame_buffer || game_frame_size == 0) return;
+    
+    std::string save_dir = g_cfg.get_store_dir() + PATH_SEPARATOR_CHAR + "screenshots";
+    helper::mkdir(save_dir);
+    
+    char filename[256];
+    time_t now = time(nullptr);
+    struct tm *t = localtime(&now);
+    snprintf(filename, sizeof(filename), "%s/screenshot_%04d%02d%02d_%02d%02d%02d.png",
+             save_dir.c_str(), t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+             t->tm_hour, t->tm_min, t->tm_sec);
+    
+    std::vector<uint8_t> rgb_data(fb_width * fb_height * 3);
+    
+    if (fb_bpp == 32) {
+        uint32_t *src = static_cast<uint32_t*>(fb_ptr);
+        for (int y = 0; y < fb_height; y++) {
+            for (int x = 0; x < fb_width; x++) {
+                uint32_t p = src[y * fb_width + x];
+                uint8_t r = (p >> 16) & 0xFF;
+                uint8_t g = (p >> 8) & 0xFF;
+                uint8_t b = p & 0xFF;
+                rgb_data[(y * fb_width + x) * 3 + 0] = r;
+                rgb_data[(y * fb_width + x) * 3 + 1] = g;
+                rgb_data[(y * fb_width + x) * 3 + 2] = b;
+            }
+        }
+    } else {
+        uint16_t *src = static_cast<uint16_t*>(fb_ptr);
+        for (int y = 0; y < fb_height; y++) {
+            for (int x = 0; x < fb_width; x++) {
+                uint16_t p = src[y * fb_width + x];
+                uint8_t r = ((p >> 11) & 0x1F) << 3;
+                uint8_t g = ((p >> 5) & 0x3F) << 2;
+                uint8_t b = (p & 0x1F) << 3;
+                rgb_data[(y * fb_width + x) * 3 + 0] = r;
+                rgb_data[(y * fb_width + x) * 3 + 1] = g;
+                rgb_data[(y * fb_width + x) * 3 + 2] = b;
+            }
+        }
+    }
+    
+    if (stbi_write_png(filename, fb_width, fb_height, 3, rgb_data.data(), fb_width * 3)) {
+        LOG(INFO, "Screenshot saved: {}", filename);
+    } else {
+        LOG(ERROR, "Failed to save screenshot: {}", filename);
+    }
 }
 
 void fbdev_video::clear() {

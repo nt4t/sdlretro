@@ -70,6 +70,17 @@ uint16_t fbdev_input::keycode_to_sdlk(uint16_t keycode) {
         case KEY_F2: return 283;
         case KEY_F3: return 284;
         case KEY_F4: return 285;
+        case KEY_F5: return 286;
+        case KEY_F6: return 287;
+        case KEY_F7: return 288;
+        case KEY_F8: return 289;
+        case KEY_F9: return 290;
+        case KEY_F10: return 291;
+        case KEY_F11: return 292;
+        case KEY_F12: return 293;
+        case KEY_F13: return 294;
+        case KEY_F14: return 295;
+        case KEY_F15: return 296;
         case KEY_HOME: return 268;
         case KEY_PAGEUP: return 266;
         case KEY_PAGEDOWN: return 267;

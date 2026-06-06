@@ -38,6 +38,7 @@ public:
 
     void set_fps_enabled(bool enabled) { fps_enabled = enabled; render_log_enabled = enabled; }
     bool get_fps_enabled() const { return fps_enabled; }
+    void save_screenshot();
 
     void set_draw_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override;
     int get_font_size() const override { return 9; }
