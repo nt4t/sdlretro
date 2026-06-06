@@ -276,15 +276,12 @@ int program(int argc, char *argv[]) {
         
         if (file_stat.m_uncomp_size > 0 && file_stat.m_uncomp_size <= 256 * 1024 * 1024) {
             rom_data.resize(file_stat.m_uncomp_size);
-            void *extracted = mz_zip_reader_extract_to_mem(&arc, best_idx, 0);
-            if (extracted) {
-                memcpy(rom_data.data(), extracted, file_stat.m_uncomp_size);
-                LOG(INFO, "ZIP: extracted {} bytes to memory", file_stat.m_uncomp_size);
-            } else {
+            if (!mz_zip_reader_extract_to_mem(&arc, best_idx, rom_data.data(), file_stat.m_uncomp_size, 0)) {
                 LOG(ERROR, "Failed to extract ROM from ZIP to memory!");
                 mz_zip_reader_end(&arc);
                 return 1;
             }
+            LOG(INFO, "ZIP: extracted {} bytes to memory", file_stat.m_uncomp_size);
         }
         
         mz_zip_reader_end(&arc);
