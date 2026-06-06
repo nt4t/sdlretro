@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/msync.h>
 #include <linux/fb.h>
 #include <linux/input.h>
 #include <dirent.h>
