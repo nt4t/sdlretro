@@ -76,11 +76,6 @@ fbdev_impl::fbdev_impl() {
     
     madvise(fb_ptr, fb_size, MADV_SEQUENTIAL);
     
-    struct ioc_fb_clean_cache ioc_clean = {};
-    if (ioctl(fb_fd, IOC_FB_CLEAN_CACHE, &ioc_clean) == 0) {
-        LOG(INFO, "fbdev: Cache cleaned via IOC_FB_CLEAN_CACHE");
-    }
-    
     video = std::make_shared<fbdev_video>(fb_fd, fb_ptr, fb_size, vinfo, finfo, mmap_flags);
     input = std::make_shared<fbdev_input>();
     audio = std::make_shared<fbdev_audio>();
