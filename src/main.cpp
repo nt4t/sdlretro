@@ -132,9 +132,15 @@ static bool extract_zip_to_file(mz_zip_archive* pZip, int file_index, const std:
         return false;
     }
     
-    fwrite(p, 1, stat2.m_uncomp_size, f);
+    size_t written = fwrite(p, 1, stat2.m_uncomp_size, f);
     free(p);
     fclose(f);
+    
+    if (written != stat2.m_uncomp_size) {
+        LOG(ERROR, "ZIP: incomplete write {} vs {}", written, stat2.m_uncomp_size);
+        return false;
+    }
+    
     return true;
 }
 
@@ -308,7 +314,7 @@ int program(int argc, char *argv[]) {
                     return 1;
                 }
                 
-                LOG(INFO, "ZIP: extracted {} bytes", file_stat.m_uncomp_size);
+                LOG(INFO, "ZIP: extracted {} bytes, exists={}", file_stat.m_uncomp_size, helper::file_exists(extracted_file) ? "yes" : "no");
                 rom_filename = extracted_file.c_str();
             }
             
@@ -335,6 +341,7 @@ int program(int argc, char *argv[]) {
         LOG(ERROR, "Unable to load core from '{}'!", core_filepath);
         return 1;
     }
+    LOG(INFO, "Loading game: {} (exists={})", rom_filename, helper::file_exists(rom_filename) ? "yes" : "no");
     impl->load_game(rom_filename);
     impl->run([&ui] { ui.in_game_menu(); });
     impl->unload_game();
