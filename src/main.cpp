@@ -273,6 +273,7 @@ int program(int argc, char *argv[]) {
 
         std::vector<const libretro::core_info *> core_list;
         std::string extracted_file;
+        LOG(INFO, "ZIP: checking ext={} vs .zip", ptr);
         if (strcasecmp(ptr, ".zip") == 0) {
             LOG(INFO, "ZIP: Opening {}", rom_filename);
             mz_zip_archive arc = {};
