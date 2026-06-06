@@ -1058,9 +1058,9 @@ void fbdev_video::render_scaled_parallel(const void *data, int width, int height
                 const uint32_t *src_row_32 = reinterpret_cast<const uint32_t*>(src_data + input_row * pitch);
                 const uint16_t *src_row_16 = reinterpret_cast<const uint16_t*>(src_data + input_row * pitch);
                 
-                uint8_t *dest_data = static_cast<uint8_t*>(target);
-                uint32_t *dest_row_32 = reinterpret_cast<uint32_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
-                uint16_t *dest_row_16 = reinterpret_cast<uint16_t*>(dest_data + (offset_y + y) * fb_pitch_pixels + offset_x);
+                uint16_t *dest_base = reinterpret_cast<uint16_t*>(target);
+                uint32_t *dest_row_32 = dest_base + ((offset_y + y) * fb_pitch_pixels + offset_x);
+                uint16_t *dest_row_16 = dest_base + ((offset_y + y) * fb_pitch_pixels + offset_x);
                 
                 if (fb_bpp == 32) {
                     if (input_bpp == 32) {
