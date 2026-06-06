@@ -136,12 +136,6 @@ bool fbdev_video::game_resolution_changed(int width, int height, int max_width, 
         LOG(INFO, "fb_pixel_fmt: r={}/{} g={}/{} b={}/{}", fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
         pixel_format_logged = true;
     }
-    static bool first_frame_logged = false;
-    if (!first_frame_logged && width > 0 && height > 0 && data) {
-        uint16_t *d16 = static_cast<uint16_t*>(const_cast<void*>(data));
-        LOG(INFO, "fb: first pixel={:#06x} fmt={}", d16[0], pixel_format);
-        first_frame_logged = true;
-    }
     LOG(INFO, "fbdev_video: game {}x{}, max {}x{}, fmt={}, scale={}, output {}x{}",
         width, height, max_width, max_height, pixel_format, scale, output_width, output_height);
     
@@ -162,6 +156,12 @@ void fbdev_video::render(const void *data, int width, int height, size_t pitch) 
     
    drawn = true;
     frame_count++;
+    static bool first_frame_logged = false;
+    if (!first_frame_logged && data && width > 0 && height > 0) {
+        uint16_t *d16 = static_cast<uint16_t*>(const_cast<void*>(data));
+        LOG(INFO, "fb: first pixel={:#06x} fmt={}", d16[0], pixel_format);
+        first_frame_logged = true;
+    }
     
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
