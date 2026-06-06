@@ -23,6 +23,7 @@
 #include <string>
 #include <algorithm>
 #include <cstdlib>
+#include <unistd.h>
 
 #include <getopt.h>
 
@@ -68,6 +69,15 @@ static bool is_rom_extension(const std::string& ext) {
     return false;
 }
 
+static std::string get_base_name(const std::string& path) {
+    size_t last_slash = path.find_last_of("/\\");
+    size_t last_dot = path.find_last_of('.');
+    if (last_slash == std::string::npos) last_slash = 0;
+    else last_slash++;
+    if (last_dot == std::string::npos || last_dot < last_slash) return path.substr(last_slash);
+    return path.substr(last_slash, last_dot - last_slash);
+}
+
 static int find_best_rom_entry(mz_zip_archive* pZip) {
     mz_uint num_files = mz_zip_reader_get_num_files(pZip);
     int best_idx = -1;
@@ -95,7 +105,7 @@ static int find_best_rom_entry(mz_zip_archive* pZip) {
     return best_idx;
 }
 
-static bool extract_zip_entry(mz_zip_archive* pZip, int file_index, std::vector<uint8_t>& out_data) {
+static bool extract_zip_to_file(mz_zip_archive* pZip, int file_index, const std::string& output_path) {
     mz_zip_archive_file_stat file_stat;
     if (!mz_zip_reader_file_stat(pZip, file_index, &file_stat)) return false;
     
@@ -104,15 +114,28 @@ static bool extract_zip_entry(mz_zip_archive* pZip, int file_index, std::vector<
         return false;
     }
     
-    out_data.resize(file_stat.m_uncomp_size);
-    void* p = mz_zip_reader_extract_to_heap(pZip, file_index, nullptr, 0);
-    if (p != nullptr) {
-        memcpy(&out_data[0], p, file_stat.m_uncomp_size);
-        mz_free(p);
-        return true;
+    FILE* f = fopen(output_path.c_str(), "wb");
+    if (!f) return false;
+    
+    mz_zip_archive_file_stat stat2;
+    mz_zip_reader_file_stat(pZip, file_index, &stat2);
+    
+    mz_uint8* p = (mz_uint8*)malloc(stat2.m_uncomp_size);
+    if (!p) {
+        fclose(f);
+        return false;
     }
     
-    return false;
+    if (!mz_zip_reader_extract_to_mem(pZip, file_index, p, stat2.m_uncomp_size, 0)) {
+        free(p);
+        fclose(f);
+        return false;
+    }
+    
+    fwrite(p, 1, stat2.m_uncomp_size, f);
+    free(p);
+    fclose(f);
+    return true;
 }
 
 #define DEFAULT_DATA_DIR "."
@@ -204,7 +227,6 @@ int program(int argc, char *argv[]) {
 
     gui::ui_host ui(impl);
 
-    std::vector<uint8_t> unzipped_data;
     std::string rom_ext;
 
     std::string core_filepath;
@@ -244,6 +266,7 @@ int program(int argc, char *argv[]) {
         }
 
         std::vector<const libretro::core_info *> core_list;
+        std::string extracted_file;
         if (strcasecmp(ptr, ".zip") == 0) {
             mz_zip_archive arc = {};
             if (!mz_zip_reader_init_file(&arc, rom_filename, 0)) {
@@ -264,11 +287,18 @@ int program(int argc, char *argv[]) {
             core_list = coreman.match_cores_by_extension(rom_ext);
             
             if (!core_list.empty()) {
-                if (!extract_zip_entry(&arc, best_idx, unzipped_data)) {
+                std::string basename = get_base_name(file_stat.m_filename);
+                std::string tmp_dir = g_cfg.get_store_dir() + PATH_SEPARATOR_CHAR + "tmp";
+                helper::mkdir(tmp_dir);
+                extracted_file = tmp_dir + PATH_SEPARATOR_CHAR + basename;
+                
+                if (!extract_zip_to_file(&arc, best_idx, extracted_file)) {
                     LOG(ERROR, "Failed to extract ROM from ZIP!");
                     mz_zip_reader_end(&arc);
                     return 1;
                 }
+                
+                rom_filename = extracted_file.c_str();
             }
             
             mz_zip_reader_end(&arc);
@@ -294,11 +324,7 @@ int program(int argc, char *argv[]) {
         LOG(ERROR, "Unable to load core from '{}'!", core_filepath);
         return 1;
     }
-    if (unzipped_data.empty()) {
-        impl->load_game(rom_filename);
-    } else {
-        impl->load_game_from_mem(rom_filename, rom_ext, unzipped_data);
-    }
+    impl->load_game(rom_filename);
     impl->run([&ui] { ui.in_game_menu(); });
     impl->unload_game();
 
