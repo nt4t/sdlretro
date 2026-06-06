@@ -66,12 +66,12 @@ fbdev_impl::fbdev_impl() {
     
 #ifdef MAP_WRITECOMBINE
     if (mmap_flags & MAP_WRITECOMBINE) {
-        LOG(INFO, "fbdev: Using write-combining mmap");
+        LOG(INFO, "fbdev: Using write-combining mmap, msync enabled");
     } else {
-        LOG(INFO, "fbdev: mmap (no WC support)");
+        LOG(INFO, "fbdev: mmap (no WC support), msync disabled");
     }
 #else
-    LOG(INFO, "fbdev: mmap (WC not available)");
+    LOG(INFO, "fbdev: mmap (WC not available), msync disabled");
 #endif
     
     madvise(fb_ptr, fb_size, MADV_SEQUENTIAL);
