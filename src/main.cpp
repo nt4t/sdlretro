@@ -274,21 +274,6 @@ int program(int argc, char *argv[]) {
         core_list = coreman.match_cores_by_extension(rom_ext);
         LOG(INFO, "ZIP: matched {} cores", core_list.size());
         
-        std::string basename = get_base_name(file_stat.m_filename);
-        std::string tmp_dir = g_cfg.get_store_dir() + PATH_SEPARATOR_CHAR + "tmp";
-        helper::mkdir(tmp_dir);
-        extracted_file = tmp_dir + PATH_SEPARATOR_CHAR + basename;
-        
-        LOG(INFO, "ZIP: extracting to {}", extracted_file);
-        if (!extract_zip_to_file(&arc, best_idx, extracted_file)) {
-            LOG(ERROR, "Failed to extract ROM from ZIP!");
-            mz_zip_reader_end(&arc);
-            return 1;
-        }
-        
-        LOG(INFO, "ZIP: extracted {} bytes, exists={}", file_stat.m_uncomp_size, helper::file_exists(extracted_file) ? "yes" : "no");
-        rom_filename = extracted_file.c_str();
-        
         mz_zip_reader_end(&arc);
     }
 
