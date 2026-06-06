@@ -39,9 +39,13 @@ Optimize fbdev framebuffer rendering performance for smoother gameplay.
 - [x] render_1to1: use memcpy for 32->32 (was per-pixel loop)
 - [x] render_scaled: fix 32->16 in-place expansion bug (expand to separate h_line_32 buffer)
 
-### Phase 5: Advanced (Low Impact, High Risk)
-- [ ] MMAP with write-combining / uncached memory
-- [ ] Use /dev/fb0 mmap with O_SYNC disabled if possible
+### Phase 5: MMAP Optimizations (Medium Impact) - DONE
+- [x] Write-combining mmap (MAP_WRITECOMbine with fallback to MAP_SHARED)
+- [x] madvise(MADV_SEQUENTIAL) for sequential access hint
+- [x] msync(MS_ASYNC) after double-buffering copy when WC enabled
+- [x] IOC_FB_CLEAN_CACHE ioctl attempt
+
+### Phase 6: Advanced (Low Impact, High Risk)
 - [ ] Framebuffer compression (if hardware supports)
 - [ ] Dirty rectangle tracking (only redraw changed areas)
 
@@ -61,5 +65,6 @@ Optimize fbdev framebuffer rendering performance for smoother gameplay.
 - [x] Phase 1: Quick Wins
 - [x] Phase 2: SIMD Conversion
 - [x] Phase 3: Scaling Optimizations
-- [ ] Phase 4: Memory Layout
-- [ ] Phase 5: Advanced
+- [x] Phase 4: Memory Layout
+- [x] Phase 5: MMAP Optimizations
+- [ ] Phase 6: Advanced
