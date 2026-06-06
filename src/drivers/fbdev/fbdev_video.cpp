@@ -682,10 +682,10 @@ inline void expand_16_to_32_sse2(const uint16_t *src, uint32_t *dst, int width, 
             __m128i r8h = _mm_and_si128(_mm_srli_epi32(p16h, 16), mask8);
             __m128i g8h = _mm_and_si128(_mm_srli_epi32(p16h, 8), mask8);
             __m128i b8h = _mm_and_si128(p16h, mask8);
-            __m128i r5 = _mm_srai_epi16(_mm_cvtepi32_epi16(r8), 3);
-            __m128i g5 = _mm_srai_epi16(_mm_cvtepi32_epi16(g8), 2);
-            __m128i r5h = _mm_srai_epi16(_mm_cvtepi32_epi16(r8h), 3);
-            __m128i g5h = _mm_srai_epi16(_mm_cvtepi32_epi16(g8h), 2);
+            __m128i r5 = _mm_srai_epi16(_mm_packs_epi32(r8, r8), 3);
+            __m128i g5 = _mm_srai_epi16(_mm_packs_epi32(g8, g8), 2);
+            __m128i r5h = _mm_srai_epi16(_mm_packs_epi32(r8h, r8h), 3);
+            __m128i g5h = _mm_srai_epi16(_mm_packs_epi32(g8h, g8h), 2);
             __m128i lo = _mm_unpacklo_epi16(r5, g5);
             __m128i hi = _mm_unpackhi_epi16(r5, g5);
             __m128i loh = _mm_unpacklo_epi16(r5h, g5h);
