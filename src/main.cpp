@@ -268,11 +268,15 @@ int program(int argc, char *argv[]) {
         std::vector<const libretro::core_info *> core_list;
         std::string extracted_file;
         if (strcasecmp(ptr, ".zip") == 0) {
+            LOG(INFO, "ZIP: Opening {}", rom_filename);
             mz_zip_archive arc = {};
             if (!mz_zip_reader_init_file(&arc, rom_filename, 0)) {
                 LOG(ERROR, "Failed to open ZIP file!");
                 return 1;
             }
+            
+            int num_files = mz_zip_reader_get_num_files(&arc);
+            LOG(INFO, "ZIP: {} files in archive", num_files);
             
             int best_idx = find_best_rom_entry(&arc);
             if (best_idx < 0) {
@@ -283,8 +287,13 @@ int program(int argc, char *argv[]) {
             
             mz_zip_archive_file_stat file_stat;
             mz_zip_reader_file_stat(&arc, best_idx, &file_stat);
+            LOG(INFO, "ZIP: selected {} (idx={})", file_stat.m_filename, best_idx);
+            
             rom_ext = strrchr(file_stat.m_filename, '.') + 1;
+            LOG(INFO, "ZIP: extension={}", rom_ext);
+            
             core_list = coreman.match_cores_by_extension(rom_ext);
+            LOG(INFO, "ZIP: matched {} cores", core_list.size());
             
             if (!core_list.empty()) {
                 std::string basename = get_base_name(file_stat.m_filename);
@@ -292,12 +301,14 @@ int program(int argc, char *argv[]) {
                 helper::mkdir(tmp_dir);
                 extracted_file = tmp_dir + PATH_SEPARATOR_CHAR + basename;
                 
+                LOG(INFO, "ZIP: extracting to {}", extracted_file);
                 if (!extract_zip_to_file(&arc, best_idx, extracted_file)) {
                     LOG(ERROR, "Failed to extract ROM from ZIP!");
                     mz_zip_reader_end(&arc);
                     return 1;
                 }
                 
+                LOG(INFO, "ZIP: extracted {} bytes", file_stat.m_uncomp_size);
                 rom_filename = extracted_file.c_str();
             }
             
