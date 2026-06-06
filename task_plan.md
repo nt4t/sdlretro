@@ -45,7 +45,13 @@ Optimize fbdev framebuffer rendering performance for smoother gameplay.
 - [x] msync(MS_ASYNC) after double-buffering copy when WC enabled
 - [x] IOC_FB_CLEAN_CACHE ioctl attempt
 
-### Phase 6: Advanced (Low Impact, High Risk)
+### Phase 6: Parallel Rendering (Medium Impact) - DONE
+- [x] Split scaled render rows across multiple threads
+- [x] Per-thread h_line buffers (heap-allocated)
+- [x] Auto-detect thread count from hardware_concurrency()
+- [x] Log parallel render status at startup
+
+### Phase 7: Advanced (Low Impact, High Risk)
 - [ ] Framebuffer compression (if hardware supports)
 - [ ] Dirty rectangle tracking (only redraw changed areas)
 
@@ -67,4 +73,5 @@ Optimize fbdev framebuffer rendering performance for smoother gameplay.
 - [x] Phase 3: Scaling Optimizations
 - [x] Phase 4: Memory Layout
 - [x] Phase 5: MMAP Optimizations
-- [ ] Phase 6: Advanced
+- [x] Phase 6: Parallel Rendering
+- [ ] Phase 7: Advanced
