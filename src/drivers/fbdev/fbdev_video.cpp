@@ -842,7 +842,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         if (input_bpp == 32) {
             const uint32_t *src_row = static_cast<const uint32_t*>(data);
             for (int h = 0; h < height; h++) {
-                memcpy(dest_row + offset_x, src_row, width * sizeof(uint32_t));
+                memcpy(dest_row, src_row, width * sizeof(uint32_t));
                 src_row += pitch / sizeof(uint32_t);
                 dest_row += fb_pitch_pixels;
             }
@@ -873,7 +873,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
         } else {
             const uint16_t *src_row = static_cast<const uint16_t*>(data);
             for (int h = 0; h < height; h++) {
-                memcpy(dest_row + offset_x, src_row, width * sizeof(uint16_t));
+                memcpy(dest_row, src_row, width * sizeof(uint16_t));
                 src_row += pitch / sizeof(uint16_t);
                 dest_row += fb_pitch_pixels;
             }
