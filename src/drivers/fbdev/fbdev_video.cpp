@@ -819,6 +819,18 @@ static inline uint16_t convert_rgb565_to_fb(uint16_t p, int fb_r_shift, int fb_r
     return out;
 }
 
+static inline uint16_t convert_bgr565_to_fb(uint16_t p, int fb_r_shift, int fb_r_len, int fb_g_shift, int fb_g_len, int fb_b_shift, int fb_b_len) {
+    uint16_t b = (p >> 11) & 0x1F;
+    uint16_t g = (p >> 5) & 0x3F;
+    uint16_t r = p & 0x1F;
+    
+    uint16_t out = 0;
+    out |= (r << fb_r_shift);
+    out |= (g << fb_g_shift);
+    out |= (b << fb_b_shift);
+    return out;
+}
+
 #if defined(__ARM_NEON) && defined(__aarch64__)
 #define EXPAND_32_TO_32 expand_32_to_32_neon_a64
 #define EXPAND_16_TO_32 expand_16_to_32_neon_a64
@@ -892,7 +904,7 @@ void fbdev_video::render_1to1(const void *data, int width, int height, size_t pi
             for (int h = 0; h < height; h++) {
                 if (need_convert) {
                     for (int x = 0; x < width; x++) {
-                        dest_row[x] = convert_rgb565_to_fb(src_row[x], fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
+                        dest_row[x] = convert_bgr565_to_fb(src_row[x], fb_r_shift, fb_r_len, fb_g_shift, fb_g_len, fb_b_shift, fb_b_len);
                     }
                 } else {
                     memcpy(dest_row, src_row, width * sizeof(uint16_t));
