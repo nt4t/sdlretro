@@ -5,6 +5,7 @@
 #include <cfg.h>
 #include "bmfont.inl"
 #include <logger.h>
+#include <helper.h>
 #include <stb_image_write.h>
 
 #include <cstdlib>
